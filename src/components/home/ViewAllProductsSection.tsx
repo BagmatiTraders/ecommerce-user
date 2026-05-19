@@ -1,0 +1,300 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { Sparkles, TrendingUp, Search, RefreshCw } from 'lucide-react';
+import ProductCard from './ProductCard';
+
+interface Product {
+  id: string;
+  display_name: string;
+  slug: string;
+  regular_price: number;
+  special_price?: number;
+  images: string[];
+  category: string;
+  rating?: number;
+  reviews_count?: number;
+  soldCount?: number;
+  created_at: string;
+}
+
+const shuffleArray = (array: any[]) => {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
+export default function ViewAllProductsSection() {
+  const [loading, setLoading] = useState(true);
+  const [allStoreProducts, setAllStoreProducts] = useState<Product[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  
+  // Rows state
+  const [row1, setRow1] = useState<Product[]>([]);
+  const [row2, setRow2] = useState<Product[]>([]);
+  const [row3, setRow3] = useState<Product[]>([]);
+  
+  // Load More pool
+  const [loadMorePool, setLoadMorePool] = useState<Product[]>([]);
+  const [extraRows, setExtraRows] = useState<Product[]>([]);
+  const [shownSet, setShownSet] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+      setRecentSearches(searches);
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchAndOrganize = async () => {
+      try {
+        // 1. Fetch order items to calculate sales metrics
+        const { data: orderItems, error: oiError } = await supabase
+          .from('ecommerce_order_items')
+          .select('product_id, quantity');
+          
+        const salesMap: Record<string, number> = {};
+        if (!oiError && orderItems) {
+          orderItems.forEach((item: any) => {
+            salesMap[item.product_id] = (salesMap[item.product_id] || 0) + (item.quantity || 0);
+          });
+        }
+
+        // 2. Fetch active storefront products
+        const { data: activeProds, error: pError } = await supabase
+          .from('ecommerce_products')
+          .select('*')
+          .eq('status', 'active');
+
+        if (pError) throw pError;
+
+        if (activeProds) {
+          const prods = activeProds.map((p: any) => ({
+            ...p,
+            price: p.special_price || p.regular_price || 0,
+            soldCount: salesMap[p.id] || 0
+          }));
+
+          // ROW 1: Search/Interest category related products
+          let row1Products: Product[] = [];
+          if (recentSearches.length > 0) {
+            // Find categories matching any recent search keyword
+            const matchingCategories = Array.from(new Set(
+              prods.filter(p => 
+                recentSearches.some(s => 
+                  p.display_name.toLowerCase().includes(s.toLowerCase()) || 
+                  p.category.toLowerCase().includes(s.toLowerCase())
+                )
+              ).map(p => p.category)
+            ));
+
+            if (matchingCategories.length > 0) {
+              row1Products = prods.filter(p => matchingCategories.includes(p.category));
+            }
+          }
+
+          // Fallback if no recent searches: Randomize popular categories
+          if (row1Products.length === 0) {
+            const allCats = Array.from(new Set(prods.map(p => p.category)));
+            if (allCats.length > 0) {
+              const randCat = allCats[Math.floor(Math.random() * allCats.length)];
+              row1Products = prods.filter(p => p.category === randCat);
+            } else {
+              row1Products = [...prods];
+            }
+          }
+
+          // Shuffle Row 1 and take first 5
+          row1Products = shuffleArray(row1Products).slice(0, 5);
+          const shownIds = new Set(row1Products.map(p => p.id));
+
+          // ROW 2: Newest products, randomized
+          // Exclude Row 1 to prevent double displaying
+          let newestCandidates = prods
+            .filter(p => !shownIds.has(p.id))
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 15);
+          
+          let row2Products = shuffleArray(newestCandidates).slice(0, 5);
+          row2Products.forEach(p => shownIds.add(p.id));
+
+          // ROW 3: Most selling products for every category (one per category), randomized
+          const categoryGroups: Record<string, Product[]> = {};
+          prods.forEach(p => {
+            if (!categoryGroups[p.category]) categoryGroups[p.category] = [];
+            categoryGroups[p.category].push(p);
+          });
+
+          let bestSellersPerCategory: Product[] = [];
+          Object.keys(categoryGroups).forEach(cat => {
+            const sortedGroup = categoryGroups[cat].sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0));
+            if (sortedGroup.length > 0) {
+              bestSellersPerCategory.push(sortedGroup[0]);
+            }
+          });
+
+          let row3Candidates = bestSellersPerCategory.filter(p => !shownIds.has(p.id));
+          if (row3Candidates.length < 5) {
+            const extraSellers = prods
+              .filter(p => !shownIds.has(p.id))
+              .sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0))
+              .slice(0, 10);
+            row3Candidates = [...row3Candidates, ...extraSellers];
+          }
+
+          let row3Products = shuffleArray(row3Candidates).slice(0, 5);
+          row3Products.forEach(p => shownIds.add(p.id));
+
+          // Load More pool (shuffle the remaining products ordered by popular mix)
+          const remainingPool = shuffleArray(prods.filter(p => !shownIds.has(p.id)));
+
+          setAllStoreProducts(prods);
+          setRow1(row1Products);
+          setRow2(row2Products);
+          setRow3(row3Products);
+          setLoadMorePool(remainingPool);
+          setShownSet(shownIds);
+        }
+      } catch (err) {
+        console.error('Error fetching personalized products logic:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAndOrganize();
+  }, [recentSearches]);
+
+  const handleLoadMore = () => {
+    // Append exactly 10 products (2 rows of 5 cards) from the pool
+    const newItems = loadMorePool.slice(0, 10);
+    setExtraRows(prev => [...prev, ...newItems]);
+    
+    // Update pool and shown lists
+    setLoadMorePool(prev => prev.slice(10));
+    const newShown = new Set(shownSet);
+    newItems.forEach(p => newShown.add(p.id));
+    setShownSet(newShown);
+  };
+
+  if (loading) {
+    return (
+      <section className="mt-[44px] py-[32px] bg-[#FAFAFA] select-none">
+        <div className="container max-w-[1440px] mx-auto px-6">
+          <div className="bg-white rounded-[24px] p-[28px] border border-[#F1F5F9] space-y-12">
+            {[1, 2, 3].map(row => (
+              <div key={row} className="space-y-6">
+                <div className="h-6 w-48 bg-gray-100 rounded-md animate-pulse"></div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[20px]">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="bg-white border border-[#EEF2F7] rounded-[18px] h-[380px] animate-pulse"></div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mt-[44px] py-[32px] bg-[#FAFAFA] select-none">
+      <div className="container max-w-[1440px] mx-auto px-6">
+        
+        {/* Section Wrapper Container */}
+        <div className="bg-white rounded-[24px] p-[28px] border border-[#F1F5F9] shadow-[0_4px_25px_rgba(0,0,0,0.01)] space-y-12">
+          
+          {/* Row 1: Search Related / Dynamic Interest Categories */}
+          {row1.length > 0 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Search size={18} className="text-[#FF6A00]" />
+                <h2 className="text-[20px] font-[700] text-[#111827]">
+                  {recentSearches.length > 0 
+                    ? `Inspired by your search for "${recentSearches[0]}"` 
+                    : "Recommended For You"}
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[20px]">
+                {row1.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Row 2: Newest Products Uploaded, Randomized */}
+          {row2.length > 0 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} className="text-[#FF6A00]" />
+                <h2 className="text-[20px] font-[700] text-[#111827]">
+                  Recently Uploaded Arrivals
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[20px]">
+                {row2.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Row 3: Most Selling Products for Every Category, Randomized */}
+          {row3.length > 0 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={18} className="text-[#FF6A00]" />
+                <h2 className="text-[20px] font-[700] text-[#111827]">
+                  Top Seller per Category
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[20px]">
+                {row3.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Extra Loaded Rows */}
+          {extraRows.length > 0 && (
+            <div className="space-y-6 pt-4 border-t border-[#F1F5F9]">
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} className="text-[#FF6A00]" />
+                <h2 className="text-[20px] font-[700] text-[#111827]">
+                  More Suggestions For You
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[20px]">
+                {extraRows.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Load More Button */}
+          {loadMorePool.length > 0 && (
+            <div className="flex justify-center pt-8 border-t border-[#F1F5F9]">
+              <button 
+                onClick={handleLoadMore}
+                className="h-[46px] px-8 rounded-full bg-[#FFF3E6] hover:bg-[#FFE7CC] text-[#FF6A00] text-[14px] font-[600] flex items-center gap-2 transition-all duration-300 cursor-pointer shadow-sm shadow-[#FF6A00]/5"
+              >
+                <RefreshCw size={16} />
+                <span>Load More Products</span>
+              </button>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </section>
+  );
+}
