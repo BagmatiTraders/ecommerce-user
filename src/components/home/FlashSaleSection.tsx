@@ -139,7 +139,7 @@ export default function FlashSaleSection() {
             {[1, 2, 3, 4, 5, 6].map(i => (
               <div 
                 key={i} 
-                className="bg-gray-50 rounded-[16px] md:rounded-[20px] p-2.5 md:p-4 flex flex-col justify-between border border-gray-100 animate-pulse w-full h-[285px] md:h-[360px]"
+                className="bg-gray-50 rounded-[16px] md:rounded-[20px] p-2.5 md:p-4 flex flex-col justify-between border border-gray-100 animate-pulse w-full h-[315px] md:h-[360px]"
               >
                 <div className="aspect-square bg-gray-200/50 rounded-xl mb-4"></div>
                 <div className="h-6 bg-gray-200/50 rounded-full w-3/4 mb-2"></div>
@@ -191,7 +191,7 @@ export default function FlashSaleSection() {
             return (
               <div 
                 key={sale.id} 
-                className="bg-white rounded-[16px] md:rounded-[20px] p-2.5 md:p-4 flex flex-col justify-between border border-[#E5E7EB] hover:shadow-[0_4px_18px_rgba(0,0,0,0.06)] transition-all duration-300 group w-full md:max-w-[200px] md:min-w-[180px] md:mx-auto h-[285px] md:h-auto"
+                className="bg-white rounded-[16px] md:rounded-[20px] p-2.5 md:p-4 flex flex-col justify-between border border-[#E5E7EB] hover:shadow-[0_4px_18px_rgba(0,0,0,0.06)] transition-all duration-300 group w-full md:max-w-[200px] md:min-w-[180px] md:mx-auto h-[315px] md:h-auto"
               >
                 {/* 1. Image Container with Badge Overlay */}
                 <Link 

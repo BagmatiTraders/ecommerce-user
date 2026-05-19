@@ -19,11 +19,14 @@ export default function Carousel() {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Swipe & Drag States
+  // Swipe & Drag States (Desktop only)
   const [touchStartX, setTouchStartX] = useState(0);
   const [touchCurrentX, setTouchCurrentX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const autoSlideTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Mobile Scroll Tracking
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Screen size detection
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function Carousel() {
     setCurrentIndex((prevIndex) => (prevIndex === 0 ? images.length - 1 : prevIndex - 1));
   }, [images.length]);
 
-  // Restart Auto Slide timer
+  // Restart Auto Slide timer (Mobile & Desktop)
   const resetAutoSlide = useCallback(() => {
     if (autoSlideTimerRef.current) {
       clearInterval(autoSlideTimerRef.current);
@@ -79,7 +82,35 @@ export default function Carousel() {
     };
   }, [images.length, resetAutoSlide]);
 
-  // Swipe / Drag Handlers
+  // Scroll Sync for Auto Sliding on Mobile
+  useEffect(() => {
+    if (isMobile && scrollRef.current && images.length > 0) {
+      const containerWidth = scrollRef.current.offsetWidth;
+      const scrollAmount = currentIndex * (containerWidth * 0.88 + 12); // slide width + gap spacing
+      const currentScroll = scrollRef.current.scrollLeft;
+      
+      // Only trigger scrolling if the index doesn't match the current scroll position
+      if (Math.abs(currentScroll - scrollAmount) > 10) {
+        scrollRef.current.scrollTo({ left: scrollAmount, behavior: 'smooth' });
+      }
+    }
+  }, [currentIndex, isMobile, images.length]);
+
+  // Mobile Scroll Event Handler
+  const handleMobileScroll = () => {
+    if (!scrollRef.current) return;
+    const scrollLeft = scrollRef.current.scrollLeft;
+    const slideWidth = scrollRef.current.offsetWidth * 0.88; // Slide takes up 88% width
+    if (slideWidth > 0) {
+      const index = Math.round(scrollLeft / slideWidth);
+      if (index >= 0 && index < images.length && index !== currentIndex) {
+        setCurrentIndex(index);
+        resetAutoSlide(); // Reset auto slide on manual swipe interaction
+      }
+    }
+  };
+
+  // Swipe / Drag Handlers (Desktop)
   const handleTouchStart = (e: React.TouchEvent) => {
     if (images.length <= 1) return;
     setTouchStartX(e.targetTouches[0].clientX);
@@ -96,14 +127,11 @@ export default function Carousel() {
   const handleTouchEnd = () => {
     if (!isDragging) return;
     const diffX = touchStartX - touchCurrentX;
-    
-    // Threshold to switch slides is 50px
     if (diffX > 50) {
       nextSlide();
     } else if (diffX < -50) {
       prevSlide();
     }
-    
     setIsDragging(false);
     setTouchStartX(0);
     setTouchCurrentX(0);
@@ -126,13 +154,11 @@ export default function Carousel() {
   const handleMouseUp = () => {
     if (!isDragging) return;
     const diffX = touchStartX - touchCurrentX;
-    
     if (diffX > 50) {
       nextSlide();
     } else if (diffX < -50) {
       prevSlide();
     }
-    
     setIsDragging(false);
     setTouchStartX(0);
     setTouchCurrentX(0);
@@ -149,7 +175,6 @@ export default function Carousel() {
   };
 
   const handleLinkClick = (e: React.MouseEvent) => {
-    // If the user dragged, prevent the redirect
     const diffX = Math.abs(touchStartX - touchCurrentX);
     if (diffX > 10) {
       e.preventDefault();
@@ -160,7 +185,7 @@ export default function Carousel() {
   if (loading) {
     return (
       <div 
-        className="w-full max-w-[1440px] mx-auto mt-[12px] md:mt-[20px] mb-[22px] md:mb-[32px] bg-gray-50 rounded-[18px] md:rounded-[20px] animate-pulse flex items-center justify-center border border-gray-100 h-[180px] md:h-[400px]" 
+        className="w-full max-w-[1440px] mx-auto mt-[12px] md:mt-[20px] mb-[22px] md:mb-[32px] bg-gray-50 rounded-[18px] md:rounded-[20px] animate-pulse flex items-center justify-center border border-gray-100 h-[380px] md:h-[400px]" 
         style={{ boxShadow: '0 4px 18px rgba(0,0,0,0.06)' }}
       >
         <span className="text-gray-400 font-semibold uppercase tracking-widest text-xs">Loading Banners...</span>
@@ -179,17 +204,81 @@ export default function Carousel() {
     return img.image_url;
   };
 
-  // Calculate dynamic translate offset during dragging
+  // Mobile View Render: Snap Slider with Next-Slide Peeking (88% width)
+  if (isMobile) {
+    return (
+      <div className="w-full mt-[12px] mb-[22px] relative select-none">
+        <div 
+          ref={scrollRef}
+          onScroll={handleMobileScroll}
+          className="w-full flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
+          }}
+        >
+          {images.map((img, index) => (
+            <div 
+              key={img.id}
+              className="w-[88%] shrink-0 snap-center rounded-[18px] overflow-hidden bg-white shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-gray-100/50 relative aspect-[4/5] h-auto"
+            >
+              {img.link ? (
+                <Link href={img.link} className="block w-full h-full relative cursor-pointer">
+                  <img 
+                    src={getImageUrl(img)} 
+                    alt={`Slide ${index + 1}`} 
+                    className="w-full h-full object-cover pointer-events-none"
+                  />
+                </Link>
+              ) : (
+                <img 
+                  src={getImageUrl(img)} 
+                  alt={`Slide ${index + 1}`} 
+                  className="w-full h-full object-cover pointer-events-none"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Custom Mobile Active Indicators */}
+        {images.length > 1 && (
+          <div className="flex items-center justify-center gap-1.5 mt-3">
+            {images.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  if (scrollRef.current) {
+                    const containerWidth = scrollRef.current.offsetWidth;
+                    const scrollAmount = index * (containerWidth * 0.88 + 12); // width + gap spacing
+                    scrollRef.current.scrollTo({ left: scrollAmount, behavior: 'smooth' });
+                  }
+                }}
+                className="rounded-full transition-all duration-300 border-none p-0 cursor-pointer"
+                style={{
+                  height: '6px',
+                  width: index === currentIndex ? '18px' : '6px',
+                  background: index === currentIndex ? '#FF6A00' : 'rgba(0, 0, 0, 0.2)'
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop View Render: Traditional Slider
   const dragOffset = isDragging ? touchCurrentX - touchStartX : 0;
 
   return (
     <div 
       className="w-full max-w-[1440px] mx-auto mt-[12px] md:mt-[20px] mb-[22px] md:mb-[32px] relative group overflow-hidden rounded-[18px] md:rounded-[20px]" 
       style={{ 
-        height: isMobile ? '180px' : '400px', 
+        height: '400px', 
         boxShadow: '0 4px 18px rgba(0,0,0,0.06)', 
         background: 'white',
-        touchAction: 'pan-y' // Prevent vertical scroll interception during swiping
+        touchAction: 'pan-y'
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -199,7 +288,6 @@ export default function Carousel() {
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Slides Container - Smooth Horizontal Slide Transition */}
       <div 
         className="w-full h-full flex"
         style={{ 
@@ -238,8 +326,7 @@ export default function Carousel() {
         ))}
       </div>
 
-      {/* Navigation Arrows (Hidden on Mobile) */}
-      {images.length > 1 && !isMobile && (
+      {images.length > 1 && (
         <>
           <button 
             onClick={(e) => { e.stopPropagation(); prevSlide(); }}
@@ -256,11 +343,10 @@ export default function Carousel() {
         </>
       )}
 
-      {/* Dot Indicator */}
       {images.length > 1 && (
         <div 
           className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20"
-          style={{ bottom: isMobile ? '12px' : '24px' }}
+          style={{ bottom: '24px' }}
         >
           {images.map((_, index) => (
             <button
@@ -268,13 +354,9 @@ export default function Carousel() {
               onClick={(e) => { e.stopPropagation(); setCurrentIndex(index); }}
               className="rounded-full transition-all duration-300 cursor-pointer"
               style={{
-                height: isMobile ? '6px' : '8px',
-                width: index === currentIndex 
-                  ? (isMobile ? '18px' : '24px') 
-                  : (isMobile ? '6px' : '8px'),
-                background: index === currentIndex 
-                  ? (isMobile ? '#FFFFFF' : '#FF6A00') 
-                  : (isMobile ? 'rgba(255, 255, 255, 0.5)' : '#D1D5DB'),
+                height: '8px',
+                width: index === currentIndex ? '24px' : '8px',
+                background: index === currentIndex ? '#FF6A00' : '#D1D5DB',
                 border: 'none',
                 padding: 0
               }}

@@ -184,15 +184,15 @@ export default function ViewAllProductsSection() {
 
   if (loading) {
     return (
-      <section className="mt-[44px] py-[32px] bg-[#FAFAFA] select-none">
-        <div className="container max-w-[1440px] mx-auto px-6">
-          <div className="bg-white rounded-[24px] p-[28px] border border-[#F1F5F9] space-y-12">
+      <section className="mt-[16px] md:mt-[44px] pt-[14px] pb-[12px] md:py-[32px] bg-[#FAFAFA] select-none">
+        <div className="container max-w-[1440px] mx-auto px-4 md:px-6">
+          <div className="bg-white rounded-[24px] p-4 md:p-[28px] border border-[#F1F5F9] space-y-12">
             {[1, 2, 3].map(row => (
               <div key={row} className="space-y-6">
                 <div className="h-6 w-48 bg-gray-100 rounded-md animate-pulse"></div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[20px]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
                   {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="bg-white border border-[#EEF2F7] rounded-[18px] h-[380px] animate-pulse"></div>
+                    <div key={i} className="bg-white border border-[#EEF2F7] rounded-[18px] h-[315px] md:h-[380px] animate-pulse"></div>
                   ))}
                 </div>
               </div>
@@ -204,24 +204,24 @@ export default function ViewAllProductsSection() {
   }
 
   return (
-    <section className="mt-[44px] py-[32px] bg-[#FAFAFA] select-none">
-      <div className="container max-w-[1440px] mx-auto px-6">
+    <section className="mt-[16px] md:mt-[44px] pt-[14px] pb-[12px] md:py-[32px] bg-[#FAFAFA] select-none">
+      <div className="container max-w-[1440px] mx-auto px-4 md:px-6">
         
         {/* Section Wrapper Container */}
-        <div className="bg-white rounded-[24px] p-[28px] border border-[#F1F5F9] shadow-[0_4px_25px_rgba(0,0,0,0.01)] space-y-12">
+        <div className="bg-white rounded-[20px] md:rounded-[24px] p-4 md:p-[28px] border border-[#F1F5F9] shadow-[0_4px_25px_rgba(0,0,0,0.01)] space-y-8 md:space-y-12">
           
           {/* Row 1: Search Related / Dynamic Interest Categories */}
           {row1.length > 0 && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-2">
-                <Search size={18} className="text-[#FF6A00]" />
-                <h2 className="text-[20px] font-[700] text-[#111827]">
+            <div className="space-y-4 md:space-y-6">
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <Search size={16} className="text-[#FF6A00] md:w-[18px] md:h-[18px]" />
+                <h2 className="text-[16px] md:text-[20px] font-bold text-[#111827]">
                   {recentSearches.length > 0 
-                    ? `Inspired by your search for "${recentSearches[0]}"` 
+                    ? `Inspired by your search "${recentSearches[0]}"` 
                     : "Recommended For You"}
                 </h2>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[20px]">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
                 {row1.map(product => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -231,14 +231,14 @@ export default function ViewAllProductsSection() {
 
           {/* Row 2: Newest Products Uploaded, Randomized */}
           {row2.length > 0 && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-2">
-                <Sparkles size={18} className="text-[#FF6A00]" />
-                <h2 className="text-[20px] font-[700] text-[#111827]">
+            <div className="space-y-4 md:space-y-6">
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <Sparkles size={16} className="text-[#FF6A00] md:w-[18px] md:h-[18px]" />
+                <h2 className="text-[16px] md:text-[20px] font-bold text-[#111827]">
                   Recently Uploaded Arrivals
                 </h2>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[20px]">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
                 {row2.map(product => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -248,14 +248,14 @@ export default function ViewAllProductsSection() {
 
           {/* Row 3: Most Selling Products for Every Category, Randomized */}
           {row3.length > 0 && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-2">
-                <TrendingUp size={18} className="text-[#FF6A00]" />
-                <h2 className="text-[20px] font-[700] text-[#111827]">
+            <div className="space-y-4 md:space-y-6">
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <TrendingUp size={16} className="text-[#FF6A00] md:w-[18px] md:h-[18px]" />
+                <h2 className="text-[16px] md:text-[20px] font-bold text-[#111827]">
                   Top Seller per Category
                 </h2>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[20px]">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
                 {row3.map(product => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -265,14 +265,14 @@ export default function ViewAllProductsSection() {
 
           {/* Extra Loaded Rows */}
           {extraRows.length > 0 && (
-            <div className="space-y-6 pt-4 border-t border-[#F1F5F9]">
-              <div className="flex items-center gap-2">
-                <Sparkles size={18} className="text-[#FF6A00]" />
-                <h2 className="text-[20px] font-[700] text-[#111827]">
+            <div className="space-y-4 md:space-y-6 pt-4 border-t border-[#F1F5F9]">
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <Sparkles size={16} className="text-[#FF6A00] md:w-[18px] md:h-[18px]" />
+                <h2 className="text-[16px] md:text-[20px] font-bold text-[#111827]">
                   More Suggestions For You
                 </h2>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-[20px]">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
                 {extraRows.map(product => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -282,12 +282,12 @@ export default function ViewAllProductsSection() {
 
           {/* Load More Button */}
           {loadMorePool.length > 0 && (
-            <div className="flex justify-center pt-8 border-t border-[#F1F5F9]">
+            <div className="flex justify-center pt-6 md:pt-8 border-t border-[#F1F5F9]">
               <button 
                 onClick={handleLoadMore}
-                className="h-[46px] px-8 rounded-full bg-[#FFF3E6] hover:bg-[#FFE7CC] text-[#FF6A00] text-[14px] font-[600] flex items-center gap-2 transition-all duration-300 cursor-pointer shadow-sm shadow-[#FF6A00]/5"
+                className="h-[40px] md:h-[46px] px-6 md:px-8 rounded-full bg-[#FFF3E6] hover:bg-[#FFE7CC] text-[#FF6A00] text-[13px] md:text-[14px] font-[600] flex items-center gap-1.5 md:gap-2 transition-all duration-300 cursor-pointer shadow-sm shadow-[#FF6A00]/5"
               >
-                <RefreshCw size={16} />
+                <RefreshCw size={14} className="animate-spin-hover" />
                 <span>Load More Products</span>
               </button>
             </div>
