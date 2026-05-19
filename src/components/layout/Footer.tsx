@@ -110,23 +110,23 @@ const Footer = () => {
   const firstLetter = storeName ? storeName.charAt(0).toUpperCase() : 'E';
 
   return (
-    <footer className="bg-gray-900 text-gray-300 pt-20 pb-10">
-      <div className="container">
+    <footer className="bg-gray-900 text-gray-300 pt-12 md:pt-20 pb-8 md:pb-10">
+      <div className="container mx-auto px-6">
         {/* Main Footer Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 mb-10 md:mb-16">
           
           {/* Brand Column */}
-          <div className="space-y-6">
-            <Link href="/" className="flex items-center gap-2 text-white group">
+          <div className="space-y-4 md:space-y-6">
+            <Link href="/" className="flex items-center gap-2 text-white group justify-start">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF6A00] to-[#FFA41C] flex items-center justify-center shadow-lg shadow-[#FF6A00]/20 transition-transform group-hover:scale-110">
                 <span className="text-white font-bold text-xl">{firstLetter}</span>
               </div>
               <span className="text-2xl font-black tracking-tight">{storeName}</span>
             </Link>
-            <p className="text-sm leading-relaxed text-gray-400 max-w-xs">
+            <p className="text-sm leading-relaxed text-gray-400 max-w-xs text-left">
               Elevating your lifestyle with curated premium products. Experience the future of seamless online shopping with 24/7 support and lightning-fast delivery.
             </p>
-            <div className="flex gap-4 pt-2">
+            <div className="flex gap-4 pt-2 justify-start">
               {[MessageCircle, Camera, Send, Video].map((Icon, i) => (
                 <a key={i} href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-[#FF6A00] hover:text-white transition-all">
                   <Icon size={18} />
@@ -136,9 +136,9 @@ const Footer = () => {
           </div>
 
           {/* Shop Categories - Dynamically fetches top 5 */}
-          <div>
-            <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-8">Shop Categories</h4>
-            <ul className="space-y-4">
+          <div className="text-left">
+            <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-4 md:mb-8">Shop Categories</h4>
+            <ul className="space-y-3.5 md:space-y-4">
               {topCategories.map((link) => (
                 <li key={link}>
                   <Link 
@@ -154,9 +154,9 @@ const Footer = () => {
           </div>
 
           {/* Customer Support & Service */}
-          <div>
-            <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-8">Support & Service</h4>
-            <ul className="space-y-4 text-sm">
+          <div className="text-left">
+            <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-4 md:mb-8">Support & Service</h4>
+            <ul className="space-y-3.5 md:space-y-4 text-sm">
               <li><Link href="#" className="hover:text-[#FF6A00] transition-colors">Help Center (Coming Soon)</Link></li>
               <li><Link href="/track" className="hover:text-[#FF6A00] transition-colors">Track Order</Link></li>
               <li><Link href="/returns-refunds" className="hover:text-[#FF6A00] transition-colors">Returns & Refunds</Link></li>
@@ -166,9 +166,9 @@ const Footer = () => {
           </div>
 
           {/* Contact Info - Dynamically loaded from Admin settings */}
-          <div className="space-y-8">
+          <div className="space-y-6 md:space-y-8 text-left">
             <div>
-              <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-8">Contact Us</h4>
+              <h4 className="text-white font-bold uppercase tracking-widest text-xs mb-4 md:mb-8">Contact Us</h4>
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <MapPin size={20} className="text-[#FF6A00] shrink-0 mt-0.5" />
@@ -186,7 +186,7 @@ const Footer = () => {
             </div>
             
             {/* Payment Methods */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 justify-start">
               <div className="px-3 py-1 bg-gray-800 rounded border border-gray-700 text-[10px] font-bold text-gray-400">VISA</div>
               <div className="px-3 py-1 bg-gray-800 rounded border border-gray-700 text-[10px] font-bold text-gray-400">MASTERCARD</div>
               <div className="px-3 py-1 bg-gray-800 rounded border border-gray-700 text-[10px] font-bold text-gray-400">COD</div>
@@ -196,24 +196,24 @@ const Footer = () => {
         </div>
 
         {/* Feature Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 py-10 border-t border-gray-800">
-          <div className="flex items-center gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 py-8 md:py-10 border-t border-gray-800">
+          <div className="flex items-center gap-4 justify-start">
             <Truck size={32} className="text-[#FF6A00]" />
-            <div>
+            <div className="text-left">
               <div className="text-white font-bold text-sm">Free Shipping</div>
               <div className="text-xs text-gray-500">On orders over Rs. 5000</div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 justify-start">
             <ShieldCheck size={32} className="text-[#FF6A00]" />
-            <div>
+            <div className="text-left">
               <div className="text-white font-bold text-sm">Secure Payment</div>
               <div className="text-xs text-gray-500">100% secure transactions</div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 justify-start">
             <CreditCard size={32} className="text-[#FF6A00]" />
-            <div>
+            <div className="text-left">
               <div className="text-white font-bold text-sm">Easy Returns</div>
               <div className="text-xs text-gray-500">Instant returns at delivery time</div>
             </div>
@@ -221,9 +221,9 @@ const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-10 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-6 text-xs font-bold uppercase tracking-widest text-gray-500">
+        <div className="pt-8 md:pt-10 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-6 text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-500 text-center md:text-left">
           <p>© {currentYear} {storeName}. All rights reserved.</p>
-          <div className="flex gap-8">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-8">
             <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
             <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
             <a href="#" className="hover:text-white transition-colors">Sitemap</a>

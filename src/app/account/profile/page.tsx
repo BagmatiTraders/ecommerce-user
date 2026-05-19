@@ -815,38 +815,35 @@ export default function ProfilePage() {
           style={{
             background: 'white',
             borderRadius: '28px',
-            padding: '28px',
             border: '1px solid #EEF2F7',
             marginBottom: '32px'
           }}
-          className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden"
+          className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden p-5 md:p-[28px]"
         >
           {/* LEFT: USER NAME DESIGN & MEMBER SINCE */}
-          <div className="space-y-1 shrink-0">
-            <h1 style={{ fontSize: '32px', fontWeight: 700, color: '#111827', letterSpacing: '-0.5px' }}>
+          <div className="space-y-1 shrink-0 text-left">
+            <h1 className="text-[24px] md:text-[32px] font-[700] text-[#111827] tracking-[-0.5px]">
               Hello, {profile?.full_name || 'Premium User'} 👋
             </h1>
-            <p style={{ fontSize: '14px', color: '#6B7280', marginTop: '6px' }}>
+            <p className="text-[12px] md:text-[14px] text-[#6B7280] mt-[4px]">
               Member since {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'January 2025'}
             </p>
           </div>
 
           {/* RIGHT: STATS BOXES & LOGOUT */}
-          <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+          <div className="flex flex-wrap items-center gap-3.5 w-full lg:w-auto">
             {/* Stat Box 1: Total Orders */}
             <div 
               style={{
                 background: '#F9FAFB',
-                borderRadius: '18px',
-                padding: '18px',
-                minWidth: '140px'
+                borderRadius: '18px'
               }}
-              className="flex-1 lg:flex-initial text-center lg:text-left border border-[#EEF2F7] shadow-sm"
+              className="flex-1 lg:flex-initial text-center lg:text-left border border-[#EEF2F7] shadow-sm p-3 md:p-[18px] min-w-[90px] md:min-w-[140px]"
             >
-              <div style={{ fontSize: '26px', fontWeight: 800, color: '#111827', lineHeight: '1.2' }}>
+              <div className="text-[20px] md:text-[26px] font-[800] text-[#111827] leading-[1.2]">
                 {orders.length}
               </div>
-              <div style={{ fontSize: '14px', fontWeight: 500, color: '#6B7280', marginTop: '4px' }}>
+              <div className="text-[11px] md:text-[14px] font-[500] text-[#6B7280] mt-[4px]">
                 {orders.length === 1 ? 'Order' : 'Orders'}
               </div>
             </div>
@@ -855,16 +852,14 @@ export default function ProfilePage() {
             <div 
               style={{
                 background: '#F9FAFB',
-                borderRadius: '18px',
-                padding: '18px',
-                minWidth: '140px'
+                borderRadius: '18px'
               }}
-              className="flex-1 lg:flex-initial text-center lg:text-left border border-[#EEF2F7] shadow-sm"
+              className="flex-1 lg:flex-initial text-center lg:text-left border border-[#EEF2F7] shadow-sm p-3 md:p-[18px] min-w-[90px] md:min-w-[140px]"
             >
-              <div style={{ fontSize: '26px', fontWeight: 800, color: '#111827', lineHeight: '1.2' }}>
+              <div className="text-[20px] md:text-[26px] font-[800] text-[#111827] leading-[1.2]">
                 {reviewsLeftCount}
               </div>
-              <div style={{ fontSize: '14px', fontWeight: 500, color: '#6B7280', marginTop: '4px' }}>
+              <div className="text-[11px] md:text-[14px] font-[500] text-[#6B7280] mt-[4px]">
                 Pending Reviews
               </div>
             </div>
@@ -873,16 +868,14 @@ export default function ProfilePage() {
             <div 
               style={{
                 background: '#F9FAFB',
-                borderRadius: '18px',
-                padding: '18px',
-                minWidth: '140px'
+                borderRadius: '18px'
               }}
-              className="flex-1 lg:flex-initial text-center lg:text-left border border-[#EEF2F7] shadow-sm"
+              className="flex-1 lg:flex-initial text-center lg:text-left border border-[#EEF2F7] shadow-sm p-3 md:p-[18px] min-w-[90px] md:min-w-[140px]"
             >
-              <div style={{ fontSize: '26px', fontWeight: 800, color: '#111827', lineHeight: '1.2' }}>
+              <div className="text-[20px] md:text-[26px] font-[800] text-[#111827] leading-[1.2]">
                 {addresses.length}
               </div>
-              <div style={{ fontSize: '14px', fontWeight: 500, color: '#6B7280', marginTop: '4px' }}>
+              <div className="text-[11px] md:text-[14px] font-[500] text-[#6B7280] mt-[4px]">
                 {addresses.length === 1 ? 'Address' : 'Addresses'}
               </div>
             </div>

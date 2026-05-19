@@ -134,3 +134,10 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-[var(--secondary)];
 }
+
+/* Smoothly hide header when footer sticky is active on mobile */
+body[data-hide-header="true"] header {
+  transform: translateY(-100%) !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
+}

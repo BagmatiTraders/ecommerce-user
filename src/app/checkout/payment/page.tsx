@@ -369,17 +369,16 @@ export default function ChoosePaymentPage() {
             style={{
               background: 'white',
               borderRadius: '28px',
-              padding: '40px',
               border: '1px solid #EEF2F7',
               boxShadow: '0 12px 40px rgba(0,0,0,0.03)'
             }}
-            className="text-center animate-in zoom-in-95 fade-in duration-300"
+            className="text-center animate-in zoom-in-95 fade-in duration-300 px-5 py-8 md:p-10"
           >
             {/* SUCCESS ICON DESIGN (✅ Green circle with checkmark) */}
             <div 
               style={{
-                width: '90px',
-                height: '90px',
+                width: '80px',
+                height: '80px',
                 borderRadius: '999px',
                 background: '#DCFCE7',
                 display: 'flex',
@@ -389,18 +388,12 @@ export default function ChoosePaymentPage() {
               }}
               className="animate-in zoom-in-50 duration-500"
             >
-              <CheckCircle2 size={46} style={{ color: '#15803D' }} />
+              <CheckCircle2 size={40} style={{ color: '#15803D' }} />
             </div>
 
             {/* SUCCESS TITLE STYLE */}
             <h1 
-              style={{
-                fontSize: '34px',
-                fontWeight: 700,
-                color: '#111827',
-                marginTop: '24px',
-                letterSpacing: '-0.5px'
-              }}
+              className="text-[26px] md:text-[34px] font-[700] text-[#111827] mt-[24px] tracking-[-0.5px]"
             >
               Order Confirmed!
             </h1>
@@ -423,11 +416,11 @@ export default function ChoosePaymentPage() {
                 background: '#F9FAFB',
                 border: '1.5px solid #EEF2F7',
                 borderRadius: '20px',
-                padding: '24px',
-                margin: '28px 0',
+                padding: '16px',
+                margin: '24px 0',
                 textAlign: 'left'
               }}
-              className="flex flex-col gap-4"
+              className="flex flex-col gap-3.5"
             >
               {/* Order ID */}
               <div className="flex justify-between items-center text-sm border-b border-gray-100/80 pb-3.5">
@@ -543,13 +536,7 @@ export default function ChoosePaymentPage() {
         <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-3 pb-2 border-b border-gray-100/60 mb-8 text-left">
           {/* Payment Page Header */}
           <h1 
-            style={{
-              fontSize: '34px',
-              fontWeight: 700,
-              color: '#111827',
-              letterSpacing: '-0.3px',
-              lineHeight: '1.2'
-            }}
+            className="text-[24px] md:text-[34px] font-[700] text-[#111827] tracking-[-0.3px] leading-[1.2]"
           >
             Choose Payment Method
           </h1>

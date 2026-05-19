@@ -535,13 +535,7 @@ export default function CheckoutPage() {
         <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-3 pb-2 border-b border-gray-100/60 mb-8 text-left">
           {/* 5. HEADER TITLE STYLE */}
           <h1 
-            style={{
-              fontSize: '34px',
-              fontWeight: 700,
-              color: '#111827',
-              letterSpacing: '-0.3px',
-              lineHeight: '1.2'
-            }}
+            className="text-[26px] md:text-[34px] font-[700] text-[#111827] tracking-[-0.3px] leading-[1.2]"
           >
             Checkout
           </h1>

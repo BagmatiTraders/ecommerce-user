@@ -83,6 +83,22 @@ export default function CartPage() {
     validatePrices(supabase);
   }, [items]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 40) {
+        document.body.setAttribute('data-hide-header', 'true');
+      } else {
+        document.body.setAttribute('data-hide-header', 'false');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.body.removeAttribute('data-hide-header');
+    };
+  }, []);
+
   const toggleSelect = (id: string) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) {
@@ -156,7 +172,7 @@ export default function CartPage() {
           </div>
           <button 
             onClick={() => router.push('/')} 
-            className="text-sm font-semibold text-[#6B7280] hover:text-[#FF6A00] flex items-center gap-2 transition-colors cursor-pointer self-start sm:self-center bg-transparent border-none"
+            className="hidden md:flex text-sm font-semibold text-[#6B7280] hover:text-[#FF6A00] items-center gap-2 transition-colors cursor-pointer self-start sm:self-center bg-transparent border-none"
           >
             <ArrowLeft size={16} /> Continue Shopping
           </button>
@@ -215,13 +231,10 @@ export default function CartPage() {
                     
                     {/* Product Image Design */}
                     <div 
-                      className="w-[110px] h-[110px] rounded-[14px] bg-[#FAFAFA] p-[12px] flex items-center justify-center border border-gray-100 shrink-0 overflow-hidden"
+                      className="w-[80px] h-[80px] md:w-[110px] md:h-[110px] rounded-[14px] bg-[#FAFAFA] p-[8px] md:p-[12px] flex items-center justify-center border border-gray-100 shrink-0 overflow-hidden"
                       style={{
-                        width: '110px',
-                        height: '110px',
                         borderRadius: '14px',
-                        background: '#FAFAFA',
-                        padding: '12px'
+                        background: '#FAFAFA'
                       }}
                     >
                       {item.image ? (
@@ -240,11 +253,9 @@ export default function CartPage() {
                     <div className="flex-1 min-w-0 space-y-1">
                       {/* Product Title */}
                       <h3 
-                        className="text-[16px] font-[500] leading-[1.5] text-[#111827] line-clamp-2"
+                        className="text-[14px] md:text-[16px] font-[500] leading-[1.4] md:leading-[1.5] text-[#111827] line-clamp-2"
                         style={{
-                          fontSize: '16px',
                           fontWeight: 500,
-                          lineHeight: 1.5,
                           color: '#111827'
                         }}
                       >
@@ -253,9 +264,8 @@ export default function CartPage() {
                       
                       {/* Product Meta / Variation Info */}
                       <div 
-                        className="text-[14px] text-[#6B7280] font-[400] flex flex-wrap items-center gap-x-3 gap-y-0.5"
+                        className="text-[11px] md:text-[14px] text-[#6B7280] font-[400] flex flex-wrap items-center gap-x-2 gap-y-0.5"
                         style={{
-                          fontSize: '14px',
                           color: '#6B7280',
                           fontWeight: 400
                         }}
@@ -272,37 +282,31 @@ export default function CartPage() {
                   </div>
 
                   {/* Right Group: Quantity Selector + Price + Delete */}
-                  <div className="flex items-center justify-between md:justify-end gap-6 shrink-0 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
+                  <div className="flex items-center justify-between md:justify-end gap-4 md:gap-6 shrink-0 w-full md:w-auto border-t md:border-t-0 pt-4 md:pt-0">
                     
                     {/* Quantity Selector Design */}
                     <div 
-                      className="flex items-center h-[42px] border border-[#E5E7EB] rounded-[12px] overflow-hidden bg-white shrink-0"
+                      className="flex items-center h-[38px] md:h-[42px] border border-[#E5E7EB] rounded-[10px] md:rounded-[12px] overflow-hidden bg-white shrink-0"
                       style={{
-                        height: '42px',
                         border: '1px solid #E5E7EB',
-                        borderRadius: '12px',
                         overflow: 'hidden',
                         background: 'white'
                       }}
                     >
                       <button 
                         onClick={() => updateQuantity(item.id, item.quantity - 1)} 
-                        className="w-[40px] h-full bg-[#F9FAFB] text-[16px] font-[600] flex items-center justify-center border-r border-[#E5E7EB] hover:bg-gray-100 transition-colors border-none"
+                        className="w-[34px] md:w-[40px] h-full bg-[#F9FAFB] text-[14px] md:text-[16px] font-[600] flex items-center justify-center border-r border-[#E5E7EB] hover:bg-gray-100 transition-colors border-none cursor-pointer"
                         style={{
-                          width: '40px',
                           background: '#F9FAFB',
-                          fontSize: '16px',
                           fontWeight: 600
                         }}
                       >
-                        <Minus size={14} />
+                        <Minus size={12} />
                       </button>
                       <span 
-                        className="min-w-[42px] text-center text-[15px] font-[600] text-[#111827]"
+                        className="min-w-[34px] md:min-w-[42px] text-center text-[13px] md:text-[15px] font-[600] text-[#111827]"
                         style={{
-                          minWidth: '42px',
                           textAlign: 'center',
-                          fontSize: '15px',
                           fontWeight: 600
                         }}
                       >
@@ -315,25 +319,22 @@ export default function CartPage() {
                             updateQuantity(item.id, item.quantity + 1);
                           }
                         }} 
-                        className="w-[40px] h-full bg-[#F9FAFB] text-[16px] font-[600] flex items-center justify-center border-l border-[#E5E7EB] hover:bg-gray-100 transition-colors border-none"
+                        className="w-[34px] md:w-[40px] h-full bg-[#F9FAFB] text-[14px] md:text-[16px] font-[600] flex items-center justify-center border-l border-[#E5E7EB] hover:bg-gray-100 transition-colors border-none cursor-pointer"
                         style={{
-                          width: '40px',
                           background: '#F9FAFB',
-                          fontSize: '16px',
                           fontWeight: 600
                         }}
                       >
-                        <Plus size={14} />
+                        <Plus size={12} />
                       </button>
                     </div>
 
                     {/* Price Design */}
-                    <div className="flex flex-col items-end min-w-[120px] shrink-0">
+                    <div className="flex flex-col items-end min-w-[80px] md:min-w-[120px] shrink-0">
                       <div className="flex items-baseline gap-0.5">
                         <span 
-                          className="text-[14px] font-[500] text-[#6B7280]"
+                          className="text-[12px] md:text-[14px] font-[500] text-[#6B7280]"
                           style={{
-                            fontSize: '14px',
                             fontWeight: 500,
                             color: '#6B7280'
                           }}
@@ -341,9 +342,8 @@ export default function CartPage() {
                           Rs.
                         </span>
                         <span 
-                          className="text-[28px] font-[800] leading-none text-[#111827]"
+                          className="text-[20px] md:text-[28px] font-[800] leading-none text-[#111827]"
                           style={{
-                            fontSize: '28px',
                             fontWeight: 800,
                             lineHeight: 1,
                             color: '#111827'
@@ -352,7 +352,7 @@ export default function CartPage() {
                           {item.price * item.quantity}
                         </span>
                       </div>
-                      <span className="text-[12px] text-[#6B7280] mt-0.5 font-medium">
+                      <span className="text-[10px] md:text-[12px] text-[#6B7280] mt-0.5 font-medium">
                         Rs. {item.price} each
                       </span>
                     </div>
@@ -360,19 +360,18 @@ export default function CartPage() {
                     {/* Remove Button Design - Premium Soft Pill Style */}
                     <button 
                       onClick={() => removeItem(item.id)}
-                      className="inline-flex items-center gap-[6px] cursor-pointer transition-all duration-200 shrink-0 self-center"
+                      className="inline-flex items-center gap-[4px] md:gap-[6px] cursor-pointer transition-all duration-200 shrink-0 self-center"
                       style={{
                         height: '34px',
-                        padding: '0 12px',
+                        padding: '0 10px',
                         borderRadius: '999px',
                         background: '#F9FAFB',
                         border: '1px solid #E5E7EB',
-                        fontSize: '13px',
+                        fontSize: '12px',
                         fontWeight: 500,
                         color: '#6B7280',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '6px',
                         transition: '0.2s ease'
                       }}
                       onMouseEnter={(e) => {
@@ -505,7 +504,7 @@ export default function CartPage() {
 
               {/* Trust Text Below Button */}
               <div 
-                className="mt-6 space-y-2 text-[13px] text-[#6B7280] leading-[1.8] border-t border-gray-100 pt-4"
+                className="hidden md:block mt-6 space-y-2 text-[13px] text-[#6B7280] leading-[1.8] border-t border-gray-100 pt-4"
                 style={{
                   fontSize: '13px',
                   color: '#6B7280',

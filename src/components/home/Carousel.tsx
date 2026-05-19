@@ -19,14 +19,11 @@ export default function Carousel() {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Swipe & Drag States (Desktop only)
+  // Swipe & Drag States
   const [touchStartX, setTouchStartX] = useState(0);
   const [touchCurrentX, setTouchCurrentX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const autoSlideTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Mobile Scroll Tracking
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Screen size detection
   useEffect(() => {
@@ -82,35 +79,7 @@ export default function Carousel() {
     };
   }, [images.length, resetAutoSlide]);
 
-  // Scroll Sync for Auto Sliding on Mobile
-  useEffect(() => {
-    if (isMobile && scrollRef.current && images.length > 0) {
-      const containerWidth = scrollRef.current.offsetWidth;
-      const scrollAmount = currentIndex * (containerWidth * 0.88 + 12); // slide width + gap spacing
-      const currentScroll = scrollRef.current.scrollLeft;
-      
-      // Only trigger scrolling if the index doesn't match the current scroll position
-      if (Math.abs(currentScroll - scrollAmount) > 10) {
-        scrollRef.current.scrollTo({ left: scrollAmount, behavior: 'smooth' });
-      }
-    }
-  }, [currentIndex, isMobile, images.length]);
-
-  // Mobile Scroll Event Handler
-  const handleMobileScroll = () => {
-    if (!scrollRef.current) return;
-    const scrollLeft = scrollRef.current.scrollLeft;
-    const slideWidth = scrollRef.current.offsetWidth * 0.88; // Slide takes up 88% width
-    if (slideWidth > 0) {
-      const index = Math.round(scrollLeft / slideWidth);
-      if (index >= 0 && index < images.length && index !== currentIndex) {
-        setCurrentIndex(index);
-        resetAutoSlide(); // Reset auto slide on manual swipe interaction
-      }
-    }
-  };
-
-  // Swipe / Drag Handlers (Desktop)
+  // Swipe / Drag Handlers (Desktop & Mobile)
   const handleTouchStart = (e: React.TouchEvent) => {
     if (images.length <= 1) return;
     setTouchStartX(e.targetTouches[0].clientX);
@@ -206,24 +175,29 @@ export default function Carousel() {
 
   // Mobile View Render: Snap Slider with Next-Slide Peeking (88% width)
   if (isMobile) {
+    const dragOffset = isDragging ? touchCurrentX - touchStartX : 0;
     return (
-      <div className="w-full mt-[12px] mb-[22px] relative select-none">
+      <div className="w-full mt-[12px] mb-[22px] relative overflow-hidden select-none">
         <div 
-          ref={scrollRef}
-          onScroll={handleMobileScroll}
-          className="w-full flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4"
+          className="w-full flex gap-3"
           style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
+            transform: `translateX(calc(16px - ${currentIndex} * (88% + 12px) + ${dragOffset}px))`,
+            transitionProperty: 'transform',
+            transitionDuration: isDragging ? '0ms' : '400ms',
+            transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)',
+            touchAction: 'pan-y'
           }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           {images.map((img, index) => (
             <div 
               key={img.id}
-              className="w-[88%] shrink-0 snap-center rounded-[18px] overflow-hidden bg-white shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-gray-100/50 relative aspect-[4/5] h-auto"
+              className="w-[88%] shrink-0 rounded-[18px] overflow-hidden bg-white shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-gray-100/50 relative aspect-[4/5] h-auto"
             >
               {img.link ? (
-                <Link href={img.link} className="block w-full h-full relative cursor-pointer">
+                <Link href={img.link} onClick={handleLinkClick} className="block w-full h-full relative cursor-pointer">
                   <img 
                     src={getImageUrl(img)} 
                     alt={`Slide ${index + 1}`} 
@@ -248,11 +222,8 @@ export default function Carousel() {
               <button
                 key={index}
                 onClick={() => {
-                  if (scrollRef.current) {
-                    const containerWidth = scrollRef.current.offsetWidth;
-                    const scrollAmount = index * (containerWidth * 0.88 + 12); // width + gap spacing
-                    scrollRef.current.scrollTo({ left: scrollAmount, behavior: 'smooth' });
-                  }
+                  setCurrentIndex(index);
+                  resetAutoSlide();
                 }}
                 className="rounded-full transition-all duration-300 border-none p-0 cursor-pointer"
                 style={{
