@@ -84,6 +84,11 @@ export default function ProductDetailPage() {
   const priceRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const loopCountRef = useRef(0);        // counts completed loops
+  const userPausedRef = useRef(false);   // true when user manually paused
+  const isMobileRef = useRef(false);     // ref for use inside callbacks
+  const [isMobile, setIsMobile] = useState(false); // state for JSX/YouTube src
+  const MAX_LOOPS = 2;                   // play video this many times then auto-pause
 
   const getYoutubeId = (url: string) => {
     if (!url) return null;
@@ -92,43 +97,135 @@ export default function ProductDetailPage() {
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
+  // ── Detect mobile once on mount ──────────────────────────────────────────
+  useEffect(() => {
+    const mobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      window.matchMedia('(pointer: coarse)').matches;
+    isMobileRef.current = mobile;
+    setIsMobile(mobile);
+  }, []);
+
+  // ── YouTube helpers ───────────────────────────────────────────────────────
   const playYoutube = () => {
     try {
-      if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: 'command', func: 'playVideo' }),
-          '*'
-        );
-      }
-    } catch (e) {
-      console.error(e);
-    }
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: 'command', func: 'playVideo' }), '*'
+      );
+    } catch (e) { console.error(e); }
   };
 
   const pauseYoutube = () => {
     try {
-      if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: 'command', func: 'pauseVideo' }),
-          '*'
-        );
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: 'command', func: 'pauseVideo' }), '*'
+      );
+    } catch (e) { console.error(e); }
+  };
+
+  // ── Uploaded video: reset loop counter when video tab is re-selected ─────
+  useEffect(() => {
+    if (selectedMedia === 'video' && videoRef.current) {
+      const vid = videoRef.current;
+      loopCountRef.current = 0;
+      userPausedRef.current = false;
+
+      if (isMobileRef.current) {
+        // Mobile: autoplay with audio from the start
+        vid.muted = false;
+        vid.play().catch(() => {
+          // If browser blocks unmuted autoplay, fall back to muted
+          vid.muted = true;
+          vid.play().catch(() => {});
+        });
+      } else {
+        // Desktop: don't autoplay; wait for hover
+        vid.pause();
       }
-    } catch (e) {
-      console.error(e);
+    }
+  }, [selectedMedia]);
+
+  // ── Uploaded video: loop counting ─────────────────────────────────────────
+  const handleVideoEnded = () => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    loopCountRef.current += 1;
+    if (loopCountRef.current < MAX_LOOPS) {
+      // replay
+      vid.currentTime = 0;
+      vid.play().catch(() => {});
+    } else {
+      // reached loop limit — pause and stay paused
+      vid.currentTime = 0;
+      vid.pause();
+      // after user manually presses play again, reset counter
     }
   };
 
+  // Track user pressing play after auto-pause (reset loop counter)
+  const handleVideoPlay = () => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    // If we were at loop limit (paused by system), user clicked play → reset
+    if (loopCountRef.current >= MAX_LOOPS) {
+      loopCountRef.current = 0;
+    }
+    userPausedRef.current = false;
+  };
+
+  // Track user manually pausing
+  const handleVideoPause = () => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    // only mark as user-paused if not at the end (system pause)
+    if (!vid.ended && loopCountRef.current < MAX_LOOPS) {
+      userPausedRef.current = true;
+    }
+  };
+
+  // ── Desktop hover handlers ────────────────────────────────────────────────
+  // Mouse ENTER: start playing (desktop only, respects pause/loop-limit state)
   const handleMouseEnter = () => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(err => console.log('Autoplay blocked:', err));
-    }
+    const vid = videoRef.current;
+    if (!vid || isMobileRef.current) return;
+    if (userPausedRef.current) return;    // respect manual pause
+    if (loopCountRef.current >= MAX_LOOPS) return; // loop limit reached
+    vid.play().catch(() => {});
   };
 
+  // Mouse LEAVE: do NOTHING — video keeps playing after cursor leaves
   const handleMouseLeave = () => {
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
+    // Intentionally empty: leaving the video area does not pause playback.
+    // Video continues until 2 loops complete OR user manually pauses.
   };
+
+  // ── YouTube: loop count via postMessage state listener ────────────────────
+  useEffect(() => {
+    let ytLoopCount = 0;
+    const handleYtMessage = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        // YouTube sends playerState: 0 = ended
+        if (data?.event === 'onStateChange' && data?.info === 0) {
+          ytLoopCount += 1;
+          if (ytLoopCount < MAX_LOOPS) {
+            // replay
+            iframeRef.current?.contentWindow?.postMessage(
+              JSON.stringify({ event: 'command', func: 'playVideo' }), '*'
+            );
+          } else {
+            // pause — user must manually click play in the iframe to restart
+            pauseYoutube();
+          }
+        }
+        // User pressed play manually → reset counter
+        if (data?.event === 'onStateChange' && data?.info === 1 && ytLoopCount >= MAX_LOOPS) {
+          ytLoopCount = 0;
+        }
+      } catch { /* ignore non-JSON */ }
+    };
+    window.addEventListener('message', handleYtMessage);
+    return () => window.removeEventListener('message', handleYtMessage);
+  }, []);
 
   // Swipe Gestures for Mobile Image Slider
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -288,35 +385,35 @@ export default function ProductDetailPage() {
       setSelectedVariation(data.variations[0]);
     }
 
-    // Fetch Reviews
-    const reviewsRes = await supabase
-      .from('ecommerce_reviews')
-      .select('*')
-      .eq('product_id', data.id)
-      .order('created_at', { ascending: false });
-    setReviews(reviewsRes.data || []);
-
-    // Fetch Recommended (Same category, different product)
-    const { data: recs } = await supabase
-      .from('ecommerce_products')
-      .select('*')
-      .eq('category', data.category)
-      .neq('id', data.id)
-      .limit(5);
-    setRecommendedProducts(recs || []);
-
-    // Fetch active Flash Sales for this product
+    // Fetch Reviews, Recommended, and Flash Sales in parallel to minimize roundtrips
     const now = new Date().toISOString();
-    const { data: flashData } = await supabase
-      .from('store_flash_sales')
-      .select('*')
-      .eq('product_id', data.id)
-      .eq('is_active', true)
-      .lt('start_time', now)
-      .gt('end_time', now);
-      
-    if (flashData) {
-      setFlashSales(flashData);
+    try {
+      const [reviewsRes, recsRes, flashRes] = await Promise.all([
+        supabase
+          .from('ecommerce_reviews')
+          .select('*')
+          .eq('product_id', data.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('ecommerce_products')
+          .select('*')
+          .eq('category', data.category)
+          .neq('id', data.id)
+          .limit(5),
+        supabase
+          .from('store_flash_sales')
+          .select('*')
+          .eq('product_id', data.id)
+          .eq('is_active', true)
+          .lt('start_time', now)
+          .gt('end_time', now)
+      ]);
+
+      setReviews(reviewsRes.data || []);
+      setRecommendedProducts(recsRes.data || []);
+      setFlashSales(flashRes.data || []);
+    } catch (err) {
+      console.error('Error fetching details in parallel:', err);
     }
 
     setLoading(false);
@@ -390,6 +487,43 @@ export default function ProductDetailPage() {
       isFlashSale: !!activeFlashSale,
       flashSaleExpiry: expiryTime
     });
+
+    // Log the cart addition event (fire-and-forget)
+    try {
+      const getSearchQuery = () => {
+        if (typeof window === 'undefined') return undefined;
+        const currentParams = new URLSearchParams(window.location.search);
+        if (currentParams.get('q')) return currentParams.get('q') || undefined;
+        
+        if (document.referrer) {
+          try {
+            const refUrl = new URL(document.referrer);
+            if (refUrl.pathname === '/search') {
+              return refUrl.searchParams.get('q') || undefined;
+            }
+          } catch (_) {}
+        }
+        return undefined;
+      };
+
+      const searchQuery = getSearchQuery();
+      import('@/lib/searchTracking').then(({ logCartAdd }) => {
+        supabase.auth.getUser().then(({ data }) => {
+          logCartAdd({
+            productId: product.id,
+            productName: product.display_name,
+            quantity: quantity,
+            price: finalPrice,
+            source: searchQuery ? 'search' : 'browse',
+            searchQuery: searchQuery,
+            userId: data?.user?.id || null
+          });
+        });
+      });
+    } catch (err) {
+      console.warn('Failed to log cart add:', err);
+    }
+
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 3000);
   };
@@ -537,14 +671,17 @@ export default function ProductDetailPage() {
               >
                 {selectedMedia === 'video' && product.video_url ? (
                   getYoutubeId(product.video_url) ? (
-                    <div 
+                    // ── YouTube video ─────────────────────────────────────
+                    // Desktop: autoplay=0 → starts paused, hover triggers play
+                    // Mobile:  autoplay=1 mute=1 → browser allows muted autoplay
+                    // Mouse leave does NOT pause — video keeps playing
+                    <div
                       className="w-full h-full relative"
-                      onMouseEnter={playYoutube}
-                      onMouseLeave={pauseYoutube}
+                      onMouseEnter={() => { if (!isMobileRef.current) playYoutube(); }}
                     >
                       <iframe
                         ref={iframeRef}
-                        src={`https://www.youtube.com/embed/${getYoutubeId(product.video_url)}?enablejsapi=1&autoplay=1&mute=1&controls=1&loop=1&playlist=${getYoutubeId(product.video_url)}&playsinline=1&rel=0`}
+                        src={`https://www.youtube.com/embed/${getYoutubeId(product.video_url)}?enablejsapi=1&autoplay=${isMobile ? 1 : 0}&mute=${isMobile ? 1 : 0}&controls=1&playsinline=1&rel=0`}
                         title="Product Video"
                         className="w-full h-full absolute inset-0 border-0"
                         allow="autoplay; encrypted-media; picture-in-picture"
@@ -552,7 +689,8 @@ export default function ProductDetailPage() {
                       />
                     </div>
                   ) : (
-                    <div 
+                    // ── Uploaded video ─────────────────────────────────────
+                    <div
                       className="w-full h-full relative flex items-center justify-center bg-black"
                       onMouseEnter={handleMouseEnter}
                       onMouseLeave={handleMouseLeave}
@@ -560,12 +698,13 @@ export default function ProductDetailPage() {
                       <video
                         ref={videoRef}
                         src={product.video_url}
-                        autoPlay
-                        muted
-                        loop
                         playsInline
                         controls
+                        preload="metadata"
                         className="max-w-full max-h-full object-contain"
+                        onEnded={handleVideoEnded}
+                        onPlay={handleVideoPlay}
+                        onPause={handleVideoPause}
                       />
                     </div>
                   )

@@ -194,6 +194,40 @@ export default function ChoosePaymentPage() {
 
       if (itemsError) throw itemsError;
 
+      // Log purchases for search analytics (fire-and-forget)
+      try {
+        const sessionId = localStorage.getItem('search_session_id') || 'unknown';
+        supabase.from('cart_logs')
+          .select('product_id, search_query')
+          .eq('session_id', sessionId)
+          .order('added_at', { ascending: false })
+          .then(({ data: cartLogs }) => {
+            const queryMap: Record<string, string> = {};
+            (cartLogs || []).forEach((c: any) => {
+              if (c.search_query && !queryMap[c.product_id]) {
+                queryMap[c.product_id] = c.search_query;
+              }
+            });
+
+            const purchaseEntries = items.map(item => ({
+              user_id: user?.id || null,
+              session_id: sessionId,
+              product_id: item.id,
+              product_name: item.display_name,
+              quantity: item.quantity,
+              revenue: item.price * item.quantity,
+              search_query: queryMap[item.id] || null
+            }));
+
+            supabase.from('purchase_logs').insert(purchaseEntries).then(({ error }) => {
+              if (error) console.warn('[SearchTracking] Failed to log purchase:', error.message);
+            });
+          });
+      } catch (err) {
+        console.warn('[SearchTracking] Error preparing purchase logs:', err);
+      }
+
+
       // Update flash sale stock counts
       const nowStr = new Date().toISOString();
       const productIds = items.map(item => item.id);

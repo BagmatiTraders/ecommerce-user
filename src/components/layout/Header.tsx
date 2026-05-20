@@ -7,6 +7,25 @@ import { Search, ShoppingCart, User, Menu, X, Package, LogIn, Clock, ChevronRigh
 import { useCart } from '@/lib/store/useCart';
 import { supabase } from '@/lib/supabase';
 
+const HighlightText = ({ text, search }: { text: string; search: string }) => {
+  if (!search.trim()) return <span>{text}</span>;
+  try {
+    const regex = new RegExp(`(${search.trim().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return (
+      <span>
+        {parts.map((part, i) => 
+          regex.test(part) 
+            ? <strong key={i} className="text-[#FF6A00] font-extrabold">{part}</strong> 
+            : <span key={i} className="text-gray-700 font-medium">{part}</span>
+        )}
+      </span>
+    );
+  } catch (_) {
+    return <span>{text}</span>;
+  }
+};
+
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -19,9 +38,20 @@ const Header = () => {
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [trendingSearches] = useState(['Smart Watch', 'Summer Collection', 'Wireless Earbuds', 'Premium Gadgets']);
+  const [trendingSearches, setTrendingSearches] = useState<string[]>(['Smart Watch', 'Summer Collection', 'Wireless Earbuds', 'Premium Gadgets']);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [searchData, setSearchData] = useState<{
+    suggestedSearches: string[];
+    products: any[];
+    categories: string[];
+    brands: string[];
+  }>({
+    suggestedSearches: [],
+    products: [],
+    categories: [],
+    brands: []
+  });
   
   const router = useRouter();
   const { items } = useCart();
@@ -107,9 +137,42 @@ const Header = () => {
       }
     };
 
+    const fetchTrending = async () => {
+      try {
+        const { data } = await supabase
+          .from('search_logs')
+          .select('query')
+          .not('query', 'is', null)
+          .limit(100);
+        
+        if (data && data.length > 0) {
+          const counts: Record<string, number> = {};
+          data.forEach(row => {
+            const q = row.query.trim();
+            if (q.length > 1) {
+              counts[q] = (counts[q] || 0) + 1;
+            }
+          });
+          const sorted = Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .map(entry => entry[0])
+            .slice(0, 5);
+          if (sorted.length > 0) {
+            setTrendingSearches(sorted);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching trending searches:', err);
+      }
+    };
+
     checkUser();
     fetchStoreName();
     fetchCategories();
+    fetchTrending();
+
+    // Prefetch search route in background to compile/load it instantly on user submit
+    router.prefetch('/search');
 
     // Load recent searches from localStorage
     const saved = localStorage.getItem('recentSearches');
@@ -120,30 +183,164 @@ const Header = () => {
     }
   }, []);
 
+  // Rank products according to active Weights & Boosts
+  const rankProducts = (productsList: any[]) => {
+    let weights = { popularity: 40, recency: 20, stock: 20, rating: 20 };
+    let boosts = { inStock: true, highRated: true, onSale: false, featured: false };
+    try {
+      const saved = localStorage.getItem('search_ranking_rules');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.weights) weights = parsed.weights;
+        if (parsed.boosts) boosts = parsed.boosts;
+      }
+    } catch (_) {}
+
+    return productsList.map(p => {
+      // 1. Stock availability (20%)
+      const stockQty = p.stock_quantity || 0;
+      const stockScore = stockQty > 0 ? 100 : 0;
+
+      // 2. Customer rating (20%)
+      const ratingVal = p.rating || 5.0;
+      const ratingScore = (ratingVal / 5.0) * 100;
+
+      // 3. Product recency (20%)
+      const createdDate = new Date(p.created_at || Date.now());
+      const diffDays = Math.ceil(Math.abs(Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+      const recencyScore = Math.max(0, 100 - (diffDays * 3));
+
+      // 4. Popularity (40%)
+      const popularityScore = Math.min(100, ((p.soldCount || 0) * 5) + ((p.reviews_count || 0) * 10));
+
+      let score = (stockScore * (weights.stock / 100)) +
+                  (ratingScore * (weights.rating / 100)) +
+                  (recencyScore * (weights.recency / 100)) +
+                  (popularityScore * (weights.popularity / 100));
+
+      // Apply Boost rules
+      if (boosts.inStock && stockQty > 0) score += 20;
+      if (boosts.highRated && ratingVal >= 4.0) score += 15;
+      if (boosts.onSale && p.special_price && p.special_price < p.regular_price) score += 15;
+
+      return { ...p, score };
+    }).sort((a, b) => b.score - a.score);
+  };
+
   // Fetch suggestions as searchQuery changes
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (!searchQuery.trim()) {
+      const query = searchQuery.trim();
+      if (!query) {
+        setSearchData({
+          suggestedSearches: [],
+          products: [],
+          categories: [],
+          brands: []
+        });
         setSuggestions([]);
         return;
       }
+
       try {
-        const { data } = await supabase
-          .from('ecommerce_products')
-          .select('display_name')
-          .ilike('display_name', `%${searchQuery}%`)
-          .limit(5);
-        if (data) {
-          setSuggestions(data.map(p => p.display_name));
+        // Step 1: Parallel fetch for synonyms, suggestions, and categories
+        const searchTerms = [query];
+        let suggestedSearches: string[] = [];
+        let categoriesData: any[] = [];
+
+        const [synonymsRes, sugRes, catsRes] = await Promise.all([
+          supabase
+            .from('search_synonyms')
+            .select('keyword, synonyms')
+            .ilike('keyword', `%${query}%`),
+          supabase
+            .from('search_suggestions')
+            .select('suggestion')
+            .or(`keyword.ilike.%${query}%,suggestion.ilike.%${query}%`)
+            .eq('is_hidden', false)
+            .order('priority', { ascending: false })
+            .limit(4),
+          supabase
+            .from('ecommerce_categories')
+            .select('name')
+            .ilike('name', `%${query}%`)
+            .limit(3)
+        ]);
+
+        if (synonymsRes.data) {
+          synonymsRes.data.forEach(row => {
+            if (row.synonyms && Array.isArray(row.synonyms)) {
+              searchTerms.push(...row.synonyms);
+            }
+          });
         }
+
+        if (sugRes.data && sugRes.data.length > 0) {
+          suggestedSearches = sugRes.data.map(s => s.suggestion);
+        }
+
+        if (catsRes.data) {
+          categoriesData = catsRes.data;
+        }
+
+        // Step 2: Parallel fetch for matched products and fallback suggestions (if needed)
+        let orFilters = searchTerms.map(term => 
+          `display_name.ilike.%${term}%,category.ilike.%${term}%,brand.ilike.%${term}%`
+        ).join(',');
+
+        const productsPromise = supabase
+          .from('ecommerce_products')
+          .select('id, display_name, slug, regular_price, special_price, images, category, brand, rating, stock_quantity, created_at')
+          .or(orFilters)
+          .eq('status', 'active')
+          .limit(8);
+
+        const fallbackPromise = suggestedSearches.length === 0
+          ? supabase
+              .from('ecommerce_products')
+              .select('display_name')
+              .ilike('display_name', `%${query}%`)
+              .limit(4)
+          : Promise.resolve({ data: null });
+
+        const [productsRes, fallbackRes] = await Promise.all([
+          productsPromise,
+          fallbackPromise
+        ]);
+
+        if (suggestedSearches.length === 0 && fallbackRes.data) {
+          suggestedSearches = fallbackRes.data.map(p => p.display_name);
+        }
+
+        const productsData = productsRes.data || [];
+        const rankedProducts = rankProducts(productsData).slice(0, 4);
+
+        // Extract Brands from matched products
+        const distinctBrands = Array.from(new Set(
+          productsData
+            .map(p => p.brand)
+            .filter(b => b && b !== 'No Brand' && b.toLowerCase().includes(query.toLowerCase()))
+        )).slice(0, 3);
+
+        setSearchData({
+          suggestedSearches,
+          products: rankedProducts,
+          categories: categoriesData.map(c => c.name),
+          brands: distinctBrands
+        });
+
+        // Backward compatibility
+        setSuggestions(suggestedSearches);
+
       } catch (err) {
-        console.error('Error fetching search suggestions:', err);
+        console.error('Error fetching search autocomplete:', err);
       }
     };
 
-    const timer = setTimeout(fetchSuggestions, 200);
+    const timer = setTimeout(fetchSuggestions, 250); // 250ms debounce
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
 
   const addRecentSearch = (query: string) => {
     const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5);
@@ -251,11 +448,11 @@ const Header = () => {
 
           {/* SUGGESTION DROPDOWN */}
           {isSearchFocused && (
-            <div className="absolute top-[52px] left-0 right-0 bg-white rounded-2xl border border-[#E5E7EB] shadow-[0_10px_30px_rgba(0,0,0,0.08)] z-[1000] overflow-hidden p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="absolute top-[52px] left-0 right-0 bg-white rounded-2xl border border-[#E5E7EB] shadow-[0_10px_30px_rgba(0,0,0,0.08)] z-[1000] overflow-hidden p-3 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[500px] overflow-y-auto">
               {!searchQuery.trim() ? (
-                <div className="p-3">
+                <div className="p-2 space-y-4">
                   {recentSearches.length > 0 && (
-                    <div className="mb-4">
+                    <div>
                       <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2 flex items-center justify-between">
                         <span>Recent Searches</span>
                         <button 
@@ -266,16 +463,16 @@ const Header = () => {
                           clear
                         </button>
                       </h4>
-                      <div className="flex flex-col">
+                      <div className="flex flex-col gap-0.5">
                         {recentSearches.map((term, i) => (
                           <button
                             key={i}
                             type="button"
                             onClick={() => { setSearchQuery(term); router.push(`/search?q=${encodeURIComponent(term)}`); addRecentSearch(term); setIsSearchFocused(false); }}
-                            className="h-12 w-full flex items-center px-4 rounded-xl text-sm text-[#111827] font-medium hover:bg-[#F9FAFB] text-left transition-colors border-none bg-transparent cursor-pointer"
+                            className="h-10 w-full flex items-center px-3 rounded-xl text-xs font-semibold text-gray-700 hover:bg-[#F9FAFB] text-left transition-colors border-none bg-transparent cursor-pointer"
                           >
-                            <Clock size={16} className="text-gray-400 mr-3" />
-                            {term}
+                            <Clock size={14} className="text-gray-400 mr-2.5 shrink-0" />
+                            <span className="truncate">{term}</span>
                           </button>
                         ))}
                       </div>
@@ -298,32 +495,158 @@ const Header = () => {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col">
-                  {suggestions.length > 0 ? (
-                    suggestions.map((name, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => { setSearchQuery(name); router.push(`/search?q=${encodeURIComponent(name)}`); addRecentSearch(name); setIsSearchFocused(false); }}
-                        className="h-12 w-full flex items-center px-4 rounded-xl text-sm text-[#111827] font-medium hover:bg-[#F9FAFB] text-left transition-colors truncate border-none bg-transparent cursor-pointer"
-                      >
-                        <Search size={16} className="text-gray-400 mr-3 shrink-0" />
-                        <span className="truncate">{name}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <button
-                      type="submit"
-                      className="h-12 w-full flex items-center px-4 rounded-xl text-sm text-[#FF6A00] font-bold hover:bg-[#F9FAFB] text-left transition-colors border-none bg-transparent cursor-pointer"
-                    >
-                      <Search size={16} className="text-[#FF6A00] mr-3" />
-                      Search for "{searchQuery}"
-                    </button>
+                <div className="flex flex-col gap-4">
+                  
+                  {/* 1. Suggested Searches */}
+                  {searchData.suggestedSearches.length > 0 && (
+                    <div className="border-b border-gray-50 pb-2">
+                      <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-1.5">
+                        🔍 Suggested Searches
+                      </h4>
+                      <div className="flex flex-col gap-0.5">
+                        {searchData.suggestedSearches.map((name, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => { setSearchQuery(name); router.push(`/search?q=${encodeURIComponent(name)}`); addRecentSearch(name); setIsSearchFocused(false); }}
+                            className="h-9 w-full flex items-center px-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-[#F9FAFB] text-left transition-colors truncate border-none bg-transparent cursor-pointer"
+                          >
+                            <Search size={12} className="text-gray-400 mr-2 shrink-0" />
+                            <span className="truncate">
+                              <HighlightText text={name} search={searchQuery} />
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
+
+                  {/* 2. Products */}
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-2">
+                      🛍 Products
+                    </h4>
+                    {searchData.products.length > 0 ? (
+                      <div className="flex flex-col gap-1.5 border-b border-gray-50 pb-2">
+                        {searchData.products.map((product) => {
+                          const price = product.special_price || product.regular_price;
+                          return (
+                            <Link
+                              key={product.id}
+                              href={`/products/${product.slug}`}
+                              onClick={() => setIsSearchFocused(false)}
+                              className="flex items-center gap-3 p-1.5 hover:bg-[#F9FAFB] rounded-xl transition-all border border-transparent hover:border-gray-100 text-decoration-none text-left"
+                            >
+                              {/* Product Thumbnail */}
+                              <div className="w-10 h-10 bg-gray-50 border border-gray-100 rounded-lg p-1 flex items-center justify-center shrink-0">
+                                {product.images?.[0] ? (
+                                  <img 
+                                    src={product.images[0]} 
+                                    alt={product.display_name} 
+                                    className="max-w-full max-h-full object-contain"
+                                  />
+                                ) : (
+                                  <span className="text-[8px] text-gray-300 uppercase">IMG</span>
+                                )}
+                              </div>
+
+                              {/* Product Info */}
+                              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                <span className="text-[12px] font-bold text-gray-900 line-clamp-1">
+                                  <HighlightText text={product.display_name} search={searchQuery} />
+                                </span>
+                                
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[11px] font-extrabold text-[#FF6A00]">
+                                    Rs. {price}
+                                  </span>
+                                  {product.rating && (
+                                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500 bg-amber-50 px-1 py-0.2 rounded">
+                                      ★ {product.rating.toFixed(1)}
+                                    </span>
+                                  )}
+                                  <span className={`text-[9px] font-bold px-1 py-0.2 rounded ${product.stock_quantity > 0 ? 'text-green-700 bg-green-50' : 'text-gray-500 bg-gray-50'}`}>
+                                    {product.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'}
+                                  </span>
+                                </div>
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-6 text-center border border-dashed border-gray-100 rounded-2xl mb-2">
+                        <span className="text-gray-300 font-semibold text-xs">No matching products</span>
+                        <button
+                          type="submit"
+                          onClick={handleSearch}
+                          className="mt-2 text-xs font-bold text-[#FF6A00] hover:underline bg-transparent border-none cursor-pointer"
+                        >
+                          Submit global search for "{searchQuery}"
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. Categories & Brands */}
+                  {(searchData.categories.length > 0 || searchData.brands.length > 0) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Categories */}
+                      {searchData.categories.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-1.5">
+                            📂 Categories
+                          </h4>
+                          <div className="flex flex-col gap-0.5">
+                            {searchData.categories.map((cat, i) => (
+                              <Link
+                                key={i}
+                                href={`/products?category=${encodeURIComponent(cat)}`}
+                                onClick={() => setIsSearchFocused(false)}
+                                className="h-9 w-full flex items-center px-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-[#F9FAFB] text-left transition-colors truncate text-decoration-none"
+                              >
+                                <ChevronRight size={12} className="text-gray-400 mr-2 shrink-0" />
+                                <span className="truncate">
+                                  <HighlightText text={cat} search={searchQuery} />
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Brands */}
+                      {searchData.brands.length > 0 && (
+                        <div>
+                          <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-1.5">
+                            🏷 Brands
+                          </h4>
+                          <div className="flex flex-col gap-0.5">
+                            {searchData.brands.map((brand, i) => (
+                              <Link
+                                key={i}
+                                href={`/products?brand=${encodeURIComponent(brand)}`}
+                                onClick={() => setIsSearchFocused(false)}
+                                className="h-9 w-full flex items-center px-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-[#F9FAFB] text-left transition-colors truncate text-decoration-none"
+                              >
+                                <Ticket size={12} className="text-gray-400 mr-2 shrink-0" />
+                                <span className="truncate">
+                                  <HighlightText text={brand} search={searchQuery} />
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 </div>
               )}
             </div>
           )}
+
+
         </div>
 
         {/* Right Side: Cart, Profile Actions */}
@@ -669,33 +992,134 @@ const Header = () => {
           {/* Suggestion list, Recent searches or Trending */}
           <div className="flex-1 overflow-y-auto space-y-6">
             {searchQuery.trim() ? (
-              <div>
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Suggestions</h4>
-                <div className="flex flex-col">
-                  {suggestions.length > 0 ? (
-                    suggestions.map((name, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => { setSearchQuery(name); router.push(`/search?q=${encodeURIComponent(name)}`); addRecentSearch(name); setIsSearchOpen(false); }}
-                        className="h-12 w-full flex items-center border-b border-gray-50 text-xs font-semibold text-gray-700 text-left hover:bg-gray-50/50 border-none bg-transparent cursor-pointer"
-                      >
-                        <Search size={14} className="text-gray-400 mr-3" />
-                        <span className="truncate">{name}</span>
-                      </button>
-                    ))
+              <div className="space-y-6">
+                
+                {/* Suggested Searches */}
+                {searchData.suggestedSearches.length > 0 && (
+                  <div>
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                      🔍 Suggested Searches
+                    </h4>
+                    <div className="flex flex-col gap-1">
+                      {searchData.suggestedSearches.map((name, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => { setSearchQuery(name); router.push(`/search?q=${encodeURIComponent(name)}`); addRecentSearch(name); setIsSearchOpen(false); }}
+                          className="h-10 w-full flex items-center px-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 text-left transition-colors truncate border-none bg-transparent cursor-pointer"
+                        >
+                          <Search size={14} className="text-gray-400 mr-2.5 shrink-0" />
+                          <span className="truncate">
+                            <HighlightText text={name} search={searchQuery} />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Categories & Brands */}
+                {(searchData.categories.length > 0 || searchData.brands.length > 0) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Categories */}
+                    {searchData.categories.length > 0 && (
+                      <div>
+                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                          📂 Categories
+                        </h4>
+                        <div className="flex flex-col gap-1">
+                          {searchData.categories.map((cat, i) => (
+                            <Link
+                              key={i}
+                              href={`/products?category=${encodeURIComponent(cat)}`}
+                              onClick={() => setIsSearchOpen(false)}
+                              className="h-10 w-full flex items-center px-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 text-left transition-colors truncate text-decoration-none"
+                            >
+                              <ChevronRight size={12} className="text-gray-400 mr-2 shrink-0" />
+                              <span className="truncate">{cat}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Brands */}
+                    {searchData.brands.length > 0 && (
+                      <div>
+                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                          🏷 Brands
+                        </h4>
+                        <div className="flex flex-col gap-1">
+                          {searchData.brands.map((brand, i) => (
+                            <Link
+                              key={i}
+                              href={`/products?brand=${encodeURIComponent(brand)}`}
+                              onClick={() => setIsSearchOpen(false)}
+                              className="h-10 w-full flex items-center px-2 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 text-left transition-colors truncate text-decoration-none"
+                            >
+                              <Ticket size={12} className="text-gray-400 mr-2 shrink-0" />
+                              <span className="truncate">{brand}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Products */}
+                <div>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                    🛍 Products
+                  </h4>
+                  {searchData.products.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      {searchData.products.map((product) => {
+                        const price = product.special_price || product.regular_price;
+                        return (
+                          <Link
+                            key={product.id}
+                            href={`/products/${product.slug}`}
+                            onClick={() => setIsSearchOpen(false)}
+                            className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-xl transition-all border border-gray-100/50 text-decoration-none text-left"
+                          >
+                            <div className="w-10 h-10 bg-gray-50 border border-gray-100 rounded-lg p-1 flex items-center justify-center shrink-0">
+                              {product.images?.[0] ? (
+                                <img 
+                                  src={product.images[0]} 
+                                  alt={product.display_name} 
+                                  className="max-w-full max-h-full object-contain"
+                                />
+                              ) : (
+                                <span className="text-[8px] text-gray-300">IMG</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-bold text-gray-900 line-clamp-1">
+                                <HighlightText text={product.display_name} search={searchQuery} />
+                              </span>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs font-extrabold text-[#FF6A00]">
+                                  Rs. {price}
+                                </span>
+                                <span className={`text-[8px] font-bold px-1 rounded ${product.stock_quantity > 0 ? 'text-green-700 bg-green-50' : 'text-gray-500 bg-gray-50'}`}>
+                                  {product.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'}
+                                </span>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   ) : (
-                    <button
-                      type="submit"
-                      onClick={handleSearch}
-                      className="h-12 w-full flex items-center border-b border-gray-50 text-xs font-bold text-[#FF6A00] text-left hover:bg-gray-50/50 border-none bg-transparent cursor-pointer"
-                    >
-                      <Search size={14} className="text-[#FF6A00] mr-3" />
-                      Search for "{searchQuery}"
-                    </button>
+                    <div className="flex flex-col items-center justify-center py-6 text-center border border-dashed border-gray-100 rounded-xl">
+                      <span className="text-gray-400 text-xs">No matching products found</span>
+                    </div>
                   )}
                 </div>
+
               </div>
+
             ) : (
               <>
                 {/* Recent Searches */}

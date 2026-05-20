@@ -211,27 +211,30 @@ export default function ViewAllProductsSection() {
         <div className="bg-white rounded-[20px] md:rounded-[24px] p-4 md:p-[28px] border border-[#F1F5F9] shadow-[0_4px_25px_rgba(0,0,0,0.01)] space-y-8 md:space-y-12">
           
           {/* Combined Recommendations Grid */}
-          {(row1.length > 0 || row2.length > 0 || row3.length > 0) && (
-            <div className="space-y-4 md:space-y-6">
-              <div className="flex items-center gap-1.5 md:gap-2">
-                <Search size={16} className="text-[#FF6A00] md:w-[18px] md:h-[18px]" />
-                <h2 className="text-[16px] md:text-[20px] font-bold text-[#111827]">
-                  Recommended For You
-                </h2>
+          {(row1.length > 0 || row2.length > 0 || row3.length > 0) && (() => {
+            // Deduplicate across all 3 rows before rendering — prevents duplicate key warning
+            const seen = new Set<string>();
+            const combined = [...row1, ...row2, ...row3].filter(p => {
+              if (seen.has(p.id)) return false;
+              seen.add(p.id);
+              return true;
+            });
+            return (
+              <div className="space-y-4 md:space-y-6">
+                <div className="flex items-center gap-1.5 md:gap-2">
+                  <Search size={16} className="text-[#FF6A00] md:w-[18px] md:h-[18px]" />
+                  <h2 className="text-[16px] md:text-[20px] font-bold text-[#111827]">
+                    Recommended For You
+                  </h2>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
+                  {combined.map(product => (
+                    <ProductCard key={`rec-${product.id}`} product={product} hideAddToCart={true} />
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
-                {row1.map(product => (
-                  <ProductCard key={product.id} product={product} hideAddToCart={true} />
-                ))}
-                {row2.map(product => (
-                  <ProductCard key={product.id} product={product} hideAddToCart={true} />
-                ))}
-                {row3.map(product => (
-                  <ProductCard key={product.id} product={product} hideAddToCart={true} />
-                ))}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Extra Loaded Rows */}
           {extraRows.length > 0 && (
@@ -244,7 +247,7 @@ export default function ViewAllProductsSection() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
                 {extraRows.map(product => (
-                  <ProductCard key={product.id} product={product} hideAddToCart={true} />
+                  <ProductCard key={`extra-${product.id}`} product={product} hideAddToCart={true} />
                 ))}
               </div>
             </div>

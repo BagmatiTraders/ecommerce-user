@@ -2,8 +2,10 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Star, Heart, Eye, RefreshCw, ShoppingCart } from 'lucide-react';
 import { useCart } from '@/lib/store/useCart';
+import { supabase } from '@/lib/supabase';
 
 interface ProductCardProps {
   product: {
@@ -25,6 +27,7 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, hideAddToCart = false, viewMoreOption = false }: ProductCardProps) {
   const { addItem } = useCart();
+  const router = useRouter();
   
   const currentPrice = (product.special_price && product.special_price > 0) ? product.special_price : product.regular_price;
   const hasDiscount = !!(product.special_price && product.special_price > 0 && product.special_price < product.regular_price);
@@ -59,6 +62,32 @@ export default function ProductCard({ product, hideAddToCart = false, viewMoreOp
       image: product.images?.[0],
       category: product.category
     });
+
+    // Log the cart addition event (fire-and-forget)
+    try {
+      const getQueryFromUrl = () => {
+        if (typeof window === 'undefined') return undefined;
+        const params = new URLSearchParams(window.location.search);
+        return params.get('q') || undefined;
+      };
+      
+      const searchQuery = getQueryFromUrl();
+      import('@/lib/searchTracking').then(({ logCartAdd }) => {
+        supabase.auth.getUser().then(({ data }) => {
+          logCartAdd({
+            productId: product.id,
+            productName: product.display_name,
+            quantity: 1,
+            price: currentPrice,
+            source: searchQuery ? 'search' : 'browse',
+            searchQuery: searchQuery,
+            userId: data?.user?.id || null
+          });
+        });
+      });
+    } catch (err) {
+      console.warn('Failed to log cart add event:', err);
+    }
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
@@ -83,9 +112,12 @@ export default function ProductCard({ product, hideAddToCart = false, viewMoreOp
   const brandSlug = hasBrand ? product.brand!.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') : '';
 
   return (
-    <div className={`bg-white border border-[#EEF2F7] rounded-[16px] md:rounded-[18px] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(0,0,0,0.06)] hover:border-[#FF6A00] group relative flex flex-col justify-between w-full p-2.5 md:p-0 ${
-      (hideAddToCart && !viewMoreOption) ? 'h-[265px] md:h-auto' : 'h-[315px] md:h-auto'
-    }`}>
+    <div 
+      onMouseEnter={() => router.prefetch(`/products/${product.slug}`)}
+      className={`bg-white border border-[#EEF2F7] rounded-[16px] md:rounded-[18px] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(0,0,0,0.06)] hover:border-[#FF6A00] group relative flex flex-col justify-between w-full p-2.5 md:p-0 ${
+        (hideAddToCart && !viewMoreOption) ? 'h-[265px] md:h-auto' : 'h-[315px] md:h-auto'
+      }`}
+    >
       
       <Link href={`/products/${product.slug}`} className="block relative shrink-0">
         {/* Badges on top-left - smaller on mobile */}

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { logSearch, logProductClick } from '@/lib/searchTracking';
 import Header from '@/components/layout/Header';
 import { 
   Search as SearchIcon, 
@@ -30,6 +31,15 @@ function SearchResults() {
   const [category, setCategory] = useState(initialCategory);
   const [priceRange, setPriceRange] = useState(1000);
   const [sortBy, setSortBy] = useState('newest');
+  const [userId, setUserId] = useState<string | null>(null);
+  const lastSearchLogId = useRef<string | null>(null);
+
+  // Resolve logged-in user ID once on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data?.user?.id ?? null);
+    });
+  }, []);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -65,15 +75,31 @@ function SearchResults() {
     }
 
     // Price Filter
-    query = query.lte('price', priceRange);
+    query = query.lte('regular_price', priceRange);
 
     // Sorting
-    if (sortBy === 'price-low') query = query.order('price', { ascending: true });
-    else if (sortBy === 'price-high') query = query.order('price', { ascending: false });
+    if (sortBy === 'price-low') query = query.order('regular_price', { ascending: true });
+    else if (sortBy === 'price-high') query = query.order('regular_price', { ascending: false });
     else query = query.order('created_at', { ascending: false });
 
     const { data, error } = await query;
-    if (!error) setProducts(data || []);
+    if (!error) {
+      // Deduplicate by id to prevent React duplicate-key warnings
+      const seen = new Set<string>();
+      const unique = (data || []).filter((p: any) => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      });
+      setProducts(unique);
+
+      // Log the search (fire-and-forget — never blocks UI)
+      if (initialQuery) {
+        logSearch(initialQuery, unique.length, userId).then(id => {
+          lastSearchLogId.current = id;
+        });
+      }
+    }
     setLoading(false);
   };
 
@@ -182,7 +208,23 @@ function SearchResults() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-[20px] animate-fade-in">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <div
+                  key={`search-${product.id}`}
+                  onClick={() => {
+                    // Log product click from this search — fire-and-forget
+                    if (initialQuery) {
+                      logProductClick({
+                        productId: product.id,
+                        productName: product.display_name,
+                        query: initialQuery,
+                        searchLogId: lastSearchLogId.current,
+                        userId,
+                      });
+                    }
+                  }}
+                >
+                  <ProductCard product={product} />
+                </div>
               ))}
             </div>
           )}
