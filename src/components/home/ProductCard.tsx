@@ -19,13 +19,15 @@ interface ProductCardProps {
     reviews_count?: number;
     soldCount?: number;
   };
+  hideAddToCart?: boolean;
+  viewMoreOption?: boolean;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, hideAddToCart = false, viewMoreOption = false }: ProductCardProps) {
   const { addItem } = useCart();
   
-  const currentPrice = product.special_price || product.regular_price;
-  const hasDiscount = product.special_price && product.special_price < product.regular_price;
+  const currentPrice = (product.special_price && product.special_price > 0) ? product.special_price : product.regular_price;
+  const hasDiscount = !!(product.special_price && product.special_price > 0 && product.special_price < product.regular_price);
   const discountPercent = hasDiscount 
     ? Math.round(((product.regular_price - product.special_price!) / product.regular_price) * 100) 
     : 0;
@@ -81,7 +83,9 @@ export default function ProductCard({ product }: ProductCardProps) {
   const brandSlug = hasBrand ? product.brand!.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') : '';
 
   return (
-    <div className="bg-white border border-[#EEF2F7] rounded-[16px] md:rounded-[18px] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(0,0,0,0.06)] hover:border-[#FF6A00] group relative flex flex-col justify-between w-full h-[315px] md:h-auto p-2.5 md:p-0">
+    <div className={`bg-white border border-[#EEF2F7] rounded-[16px] md:rounded-[18px] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(0,0,0,0.06)] hover:border-[#FF6A00] group relative flex flex-col justify-between w-full p-2.5 md:p-0 ${
+      (hideAddToCart && !viewMoreOption) ? 'h-[265px] md:h-auto' : 'h-[315px] md:h-auto'
+    }`}>
       
       <Link href={`/products/${product.slug}`} className="block relative shrink-0">
         {/* Badges on top-left - smaller on mobile */}
@@ -151,10 +155,8 @@ export default function ProductCard({ product }: ProductCardProps) {
           {/* Product Name (Max 2 lines) */}
           <Link href={`/products/${product.slug}`}>
             <h3 
-              className="text-[#111827] leading-[1.3] md:leading-[1.5] line-clamp-2 hover:text-[#FF6A00] transition-colors text-[13px] md:text-[15px] font-semibold"
+              className="text-[#111827] leading-[1.3] md:leading-[1.5] line-clamp-2 hover:text-[#FF6A00] transition-colors text-[13px] md:text-[15px] font-semibold h-[34px] md:h-[45px] overflow-hidden"
               style={{ 
-                minHeight: '34px',
-                maxHeight: '34px',
                 marginTop: '2px'
               }}
             >
@@ -196,13 +198,24 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
 
           {/* Add to Cart Button */}
-          <button 
-            onClick={handleAddToCart}
-            className="w-full h-[36px] md:h-[42px] rounded-[10px] md:rounded-[12px] bg-white border-[1.5px] border-[#FF6A00] text-[#FF6A00] hover:bg-[#FFF3E6] font-bold text-[13px] md:text-[14px] flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer shadow-sm shrink-0"
-          >
-            <ShoppingCart size={14} className="md:w-4 md:h-4" />
-            <span>Add to Cart</span>
-          </button>
+          {!hideAddToCart && !viewMoreOption && (
+            <button 
+              onClick={handleAddToCart}
+              className="w-full h-[36px] md:h-[42px] rounded-[10px] md:rounded-[12px] bg-white border-[1.5px] border-[#FF6A00] text-[#FF6A00] hover:bg-[#FFF3E6] font-bold text-[13px] md:text-[14px] flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer shadow-sm shrink-0"
+            >
+              <ShoppingCart size={14} className="md:w-4 md:h-4" />
+              <span>Add to Cart</span>
+            </button>
+          )}
+
+          {viewMoreOption && (
+            <Link 
+              href={`/products/${product.slug}`}
+              className="w-full h-[36px] md:h-[42px] rounded-[10px] md:rounded-[12px] bg-white border-[1.5px] border-[#FF6A00] text-[#FF6A00] hover:bg-[#FFF3E6] font-bold text-[13px] md:text-[14px] flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer shadow-sm shrink-0"
+            >
+              <span>View More</span>
+            </Link>
+          )}
         </div>
 
       </div>
@@ -210,3 +223,4 @@ export default function ProductCard({ product }: ProductCardProps) {
     </div>
   );
 }
+

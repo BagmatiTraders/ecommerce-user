@@ -180,10 +180,8 @@ export default function TopRankingSection() {
                       {/* Product Name (Max 2 lines) */}
                       <Link href={`/products/${product.slug}`}>
                         <h3 
-                          className="text-[#111827] leading-[1.3] md:leading-[1.5] line-clamp-2 hover:text-[#FF6A00] transition-colors text-[13px] md:text-[15px] font-semibold"
+                          className="text-[#111827] leading-[1.3] md:leading-[1.5] line-clamp-2 hover:text-[#FF6A00] transition-colors text-[13px] md:text-[15px] font-semibold h-[34px] md:h-[45px] overflow-hidden"
                           style={{ 
-                            minHeight: '34px',
-                            maxHeight: '34px',
                             marginTop: '2px'
                           }}
                         >

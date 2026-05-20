@@ -210,54 +210,24 @@ export default function ViewAllProductsSection() {
         {/* Section Wrapper Container */}
         <div className="bg-white rounded-[20px] md:rounded-[24px] p-4 md:p-[28px] border border-[#F1F5F9] shadow-[0_4px_25px_rgba(0,0,0,0.01)] space-y-8 md:space-y-12">
           
-          {/* Row 1: Search Related / Dynamic Interest Categories */}
-          {row1.length > 0 && (
+          {/* Combined Recommendations Grid */}
+          {(row1.length > 0 || row2.length > 0 || row3.length > 0) && (
             <div className="space-y-4 md:space-y-6">
               <div className="flex items-center gap-1.5 md:gap-2">
                 <Search size={16} className="text-[#FF6A00] md:w-[18px] md:h-[18px]" />
                 <h2 className="text-[16px] md:text-[20px] font-bold text-[#111827]">
-                  {recentSearches.length > 0 
-                    ? `Inspired by your search "${recentSearches[0]}"` 
-                    : "Recommended For You"}
+                  Recommended For You
                 </h2>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
                 {row1.map(product => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard key={product.id} product={product} hideAddToCart={true} />
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* Row 2: Newest Products Uploaded, Randomized */}
-          {row2.length > 0 && (
-            <div className="space-y-4 md:space-y-6">
-              <div className="flex items-center gap-1.5 md:gap-2">
-                <Sparkles size={16} className="text-[#FF6A00] md:w-[18px] md:h-[18px]" />
-                <h2 className="text-[16px] md:text-[20px] font-bold text-[#111827]">
-                  Recently Uploaded Arrivals
-                </h2>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
                 {row2.map(product => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard key={product.id} product={product} hideAddToCart={true} />
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* Row 3: Most Selling Products for Every Category, Randomized */}
-          {row3.length > 0 && (
-            <div className="space-y-4 md:space-y-6">
-              <div className="flex items-center gap-1.5 md:gap-2">
-                <TrendingUp size={16} className="text-[#FF6A00] md:w-[18px] md:h-[18px]" />
-                <h2 className="text-[16px] md:text-[20px] font-bold text-[#111827]">
-                  Top Seller per Category
-                </h2>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
                 {row3.map(product => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard key={product.id} product={product} hideAddToCart={true} />
                 ))}
               </div>
             </div>
@@ -274,7 +244,7 @@ export default function ViewAllProductsSection() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
                 {extraRows.map(product => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard key={product.id} product={product} hideAddToCart={true} />
                 ))}
               </div>
             </div>

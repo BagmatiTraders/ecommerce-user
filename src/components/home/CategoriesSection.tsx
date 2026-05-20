@@ -23,7 +23,7 @@ export default function CategoriesSection() {
         .order('name', { ascending: true });
 
       if (!error && data) {
-        setCategories(data);
+        setCategories(data.filter((cat: any) => !cat.parent_id));
       }
       setLoading(false);
     };

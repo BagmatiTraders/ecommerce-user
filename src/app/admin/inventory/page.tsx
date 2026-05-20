@@ -69,6 +69,20 @@ export default function AdminInventory() {
   const [isEditing, setIsEditing] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
 
+  // Bulk Upload State
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [bulkResults, setBulkResults] = useState<{
+    total: number;
+    success: number;
+    skippedDouble: number;
+    skippedInvalidId: number;
+    skippedInvalidCategory: number;
+    skippedOther: number;
+    errors: string[];
+  } | null>(null);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
+
   // Full Page Editor State
   const [storefrontData, setStorefrontData] = useState({
     displayName: '',
@@ -137,6 +151,264 @@ export default function AdminInventory() {
       if (p.website_category) savedCats[p.id] = p.website_category;
     });
     setLocalCategories(savedCats);
+  };
+
+  const handleBulkCSVProcess = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setBulkProcessing(true);
+    setBulkResults(null);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        if (!text) {
+          alert("Empty CSV file!");
+          setBulkProcessing(false);
+          return;
+        }
+
+        const lines = parseCSV(text);
+        if (lines.length < 2) {
+          alert("CSV must contain headers and at least one product row!");
+          setBulkProcessing(false);
+          return;
+        }
+
+        const headers = lines[0];
+        const dataRows = lines.slice(1);
+
+        // Highly flexible column lookups supporting typo tolerances and abbreviations
+        const getFlexibleIdx = (keywords: string[], exacts: string[] = []): number => {
+          return headers.findIndex(h => {
+            const norm = h.trim().toLowerCase().replace(/[\s_]+/g, '');
+            if (exacts.some(ex => norm === ex.toLowerCase().replace(/[\s_]+/g, ''))) return true;
+            return keywords.some(kw => norm.includes(kw.toLowerCase().replace(/[\s_]+/g, '')));
+          });
+        };
+
+        const idxInventoryId = getFlexibleIdx(['inventoryid', 'id'], ['inventoryid', 'id']);
+        const idxWarehouseId = getFlexibleIdx(['warehouseproductid', 'warehouseid', 'warehouseproduct']);
+        const idxProductName = getFlexibleIdx(['productname', 'name', 'title']);
+        const idxCategory = getFlexibleIdx(['category', 'categories']);
+        const idxSubCategory = getFlexibleIdx(['subcategory', 'subcategories']);
+        const idxBrand = getFlexibleIdx(['brand', 'brands']);
+        const idxImg1 = getFlexibleIdx(['image1', 'images1', 'img1']);
+        const idxImg2 = getFlexibleIdx(['image2', 'images2', 'img2']);
+        const idxImg3 = getFlexibleIdx(['image3', 'images3', 'img3']);
+        const idxImg4 = getFlexibleIdx(['image4', 'images4', 'img4']);
+        const idxRegPrice = getFlexibleIdx(['regularprice', 'price', 'mrp']);
+        const idxSpecPrice = getFlexibleIdx(['specialprice', 'saleprice', 'discountprice']);
+        const idxStock = getFlexibleIdx(['stock', 'qty', 'quantity']);
+        const idxDesc = getFlexibleIdx(['description', 'desc', 'details']);
+        const idxHighlights = getFlexibleIdx(['highlight', 'hightlight', 'features']);
+
+        // Check if mandatory fields indexes are present
+        if (idxInventoryId === -1 || idxWarehouseId === -1) {
+          alert("CSV is missing mandatory columns! Ensure columns 'Inventory ID' and 'Warehouse Product Id' exist.");
+          setBulkProcessing(false);
+          return;
+        }
+
+        let successCount = 0;
+        let skippedDouble = 0;
+        let skippedInvalidId = 0;
+        let skippedInvalidCategory = 0;
+        let skippedOther = 0;
+        const errorsList: string[] = [];
+
+        // Pre-filter valid categories list
+        const validCategoriesList = CATEGORIES.filter(c => c !== 'Select Category');
+
+        for (let rowIndex = 0; rowIndex < dataRows.length; rowIndex++) {
+          const row = dataRows[rowIndex];
+          if (row.length === 0 || row.every(cell => cell.trim() === '')) {
+            continue; // Skip empty rows
+          }
+
+          const csvInventoryId = row[idxInventoryId]?.trim();
+          const csvWarehouseProductId = row[idxWarehouseId]?.trim();
+          const rowNum = rowIndex + 2; // Row number (1-indexed header is row 1)
+
+          if (!csvWarehouseProductId) {
+            skippedOther++;
+            errorsList.push(`Row ${rowNum}: Missing Warehouse Product Id`);
+            continue;
+          }
+
+          if (!csvInventoryId) {
+            skippedOther++;
+            errorsList.push(`Row ${rowNum}: Missing Inventory ID`);
+            continue;
+          }
+
+          // 1. Find product in loaded warehouse inventory
+          const matchedProduct = products.find(p => {
+            const pIdStr = p.id ? String(p.id).trim().toLowerCase() : '';
+            const pProductIdStr = p.product_id ? String(p.product_id).trim().toLowerCase() : '';
+            const csvIdStr = csvInventoryId.trim().toLowerCase();
+            return pIdStr === csvIdStr || pProductIdStr === csvIdStr;
+          });
+          if (!matchedProduct) {
+            skippedInvalidId++;
+            errorsList.push(`Row ${rowNum}: Inventory ID '${csvInventoryId}' not found in warehouse`);
+            continue;
+          }
+
+          // 2. Check if already uploaded (no double upload)
+          if (productsInStore.has(matchedProduct.id)) {
+            skippedDouble++;
+            errorsList.push(`Row ${rowNum}: Product '${matchedProduct.product_name}' already uploaded`);
+            continue;
+          }
+
+          // 3. Product Name logic
+          const rawProductName = idxProductName !== -1 ? row[idxProductName]?.trim() : '';
+          const displayName = rawProductName || matchedProduct.product_name;
+
+          // 4. Category logic
+          const rawCategory = idxCategory !== -1 ? row[idxCategory]?.trim() : '';
+          let finalCategory = '';
+          if (!rawCategory) {
+            finalCategory = 'Home & Kitchen';
+          } else {
+            const matchedCat = validCategoriesList.find(c => c.toLowerCase() === rawCategory.toLowerCase());
+            if (matchedCat) {
+              finalCategory = matchedCat;
+            } else {
+              skippedInvalidCategory++;
+              errorsList.push(`Row ${rowNum}: Category '${rawCategory}' does not match any valid category`);
+              continue;
+            }
+          }
+
+          // 5. Brand logic
+          const rawBrand = idxBrand !== -1 ? row[idxBrand]?.trim() : '';
+          const finalBrand = rawBrand || 'No Brand';
+
+          // 6. Collect images
+          const images: string[] = [];
+          if (idxImg1 !== -1 && row[idxImg1]?.trim()) images.push(row[idxImg1].trim());
+          if (idxImg2 !== -1 && row[idxImg2]?.trim()) images.push(row[idxImg2].trim());
+          if (idxImg3 !== -1 && row[idxImg3]?.trim()) images.push(row[idxImg3].trim());
+          if (idxImg4 !== -1 && row[idxImg4]?.trim()) images.push(row[idxImg4].trim());
+
+          // If no images specified in CSV, fallback to warehouse product image
+          if (images.length === 0 && matchedProduct.image_url) {
+            images.push(matchedProduct.image_url);
+          }
+
+          if (images.length === 0) {
+            skippedOther++;
+            errorsList.push(`Row ${rowNum}: At least one product image is required`);
+            continue;
+          }
+
+          // 7. Pricing
+          const rawRegPrice = idxRegPrice !== -1 ? Number(row[idxRegPrice]) : 0;
+          const regularPrice = rawRegPrice || matchedProduct.est_price || 0;
+          if (regularPrice <= 0) {
+            skippedOther++;
+            errorsList.push(`Row ${rowNum}: Regular Price must be greater than 0`);
+            continue;
+          }
+
+          const specialPrice = idxSpecPrice !== -1 ? Number(row[idxSpecPrice]) : 0;
+          if (specialPrice > 0) {
+            if (specialPrice >= regularPrice) {
+              skippedOther++;
+              errorsList.push(`Row ${rowNum}: Special Price must be lower than Regular Price`);
+              continue;
+            }
+          }
+
+          // 8. Stock
+          const stockQty = idxStock !== -1 ? Number(row[idxStock]) : 0;
+
+          // 9. Description (HTML cleaned to plain text)
+          const rawDesc = idxDesc !== -1 ? row[idxDesc] : '';
+          const cleanedDescription = cleanDescriptionHtml(rawDesc);
+          if (!cleanedDescription) {
+            skippedOther++;
+            errorsList.push(`Row ${rowNum}: Product Description/Details are necessary`);
+            continue;
+          }
+
+          // 10. Highlights (HTML parsed to array of strings)
+          const rawHighlights = idxHighlights !== -1 ? row[idxHighlights] : '';
+          const parsedHighlights = parseHighlights(rawHighlights);
+          if (parsedHighlights.length === 0) {
+            skippedOther++;
+            errorsList.push(`Row ${rowNum}: At least one Product Highlight is necessary`);
+            continue;
+          }
+
+          // 11. Generate slug
+          const slug = displayName.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') + '-' + Math.random().toString(36).substring(2, 5);
+
+          // 12. Upload to database
+          try {
+            const payload = {
+              inventory_id: matchedProduct.id,
+              display_name: displayName,
+              description: cleanedDescription,
+              regular_price: regularPrice,
+              special_price: specialPrice,
+              stock_quantity: stockQty,
+              category: finalCategory,
+              brand: finalBrand,
+              images: images,
+              status: 'active',
+              variations: [],
+              highlights: parsedHighlights,
+              slug: slug
+            };
+
+            const { error: insertError } = await supabase
+              .from('ecommerce_products')
+              .insert(payload);
+
+            if (insertError) throw insertError;
+
+            // Sync category back to warehouse
+            await updateWarehouseCategory(matchedProduct.id, finalCategory);
+            
+            // Add to in-store set
+            productsInStore.add(matchedProduct.id);
+            successCount++;
+          } catch (err: any) {
+            skippedOther++;
+            errorsList.push(`Row ${rowNum}: Database insert failed - ${err.message}`);
+          }
+        }
+
+        setBulkResults({
+          total: dataRows.length,
+          success: successCount,
+          skippedDouble,
+          skippedInvalidId,
+          skippedInvalidCategory,
+          skippedOther,
+          errors: errorsList
+        });
+
+        // Trigger store status and list refresh
+        fetchStoreStatus();
+        fetchInventory();
+
+      } catch (error: any) {
+        alert("Failed to read/process CSV: " + error.message);
+      } finally {
+        setBulkProcessing(false);
+        if (bulkFileInputRef.current) {
+          bulkFileInputRef.current.value = ''; // clear file input
+        }
+      }
+    };
+
+    reader.readAsText(file);
   };
 
   const handleOpenEditor = async (product: InventoryProduct, editMode = false) => {
@@ -296,11 +568,6 @@ export default function AdminInventory() {
     if (storefrontData.specialPrice > 0) {
       if (storefrontData.specialPrice >= storefrontData.regularPrice) {
         alert('⚠️ Special Price must be lower than Regular Price!');
-        return;
-      }
-      const minPrice = storefrontData.regularPrice * 0.7;
-      if (storefrontData.specialPrice < minPrice) {
-        alert(`⚠️ Special Price cannot be more than 30% lower than Regular Price (Minimum allowed: Rs ${minPrice.toFixed(0)})`);
         return;
       }
     }
@@ -800,6 +1067,16 @@ export default function AdminInventory() {
               <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
               Sync List
             </button>
+            <button 
+              onClick={() => {
+                setBulkResults(null);
+                setIsBulkUploadOpen(true);
+              }}
+              className="px-6 py-3 rounded-xl bg-green-600 text-white font-bold flex items-center gap-2 hover:bg-green-700 transition-all shadow-xl shadow-green-600/10"
+            >
+              <Upload size={20} />
+              Bulk Product Upload
+            </button>
           </div>
         </div>
 
@@ -977,6 +1254,288 @@ export default function AdminInventory() {
           />
         </div>
       )}
+
+      {/* Bulk Product Upload Modal */}
+      {isBulkUploadOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[85vh] overflow-y-auto p-8 shadow-2xl relative flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+            <button 
+              onClick={() => {
+                if (!bulkProcessing) {
+                  setIsBulkUploadOpen(false);
+                  setBulkResults(null);
+                }
+              }} 
+              disabled={bulkProcessing}
+              className="absolute top-6 right-6 p-2 hover:bg-gray-100 rounded-full transition-all disabled:opacity-50"
+            >
+              <X size={24} />
+            </button>
+
+            <h2 className="text-2xl font-black mb-2 flex items-center gap-3">
+              <Upload className="text-green-600" />
+              Bulk Product Upload
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] mb-6 font-bold uppercase tracking-wider">
+              Upload storefront products from a CSV file
+            </p>
+
+            <div className="flex-1 space-y-6">
+              {/* Instructions / File Column Layout */}
+              <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 text-xs text-gray-600 space-y-3">
+                <div className="font-bold text-gray-800 uppercase tracking-widest text-[10px]">Expected CSV Columns:</div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 font-mono text-[11px]">
+                  <div>• Inventory ID <span className="text-red-500 font-bold">*</span></div>
+                  <div>• Warehouse Product Id <span className="text-red-500 font-bold">*</span></div>
+                  <div>• Product Name</div>
+                  <div>• Category</div>
+                  <div>• Sub Category</div>
+                  <div>• Brand</div>
+                  <div>• Product Images1, 2, 3, 4</div>
+                  <div>• Regular Price</div>
+                  <div>• Special Price</div>
+                  <div>• Total Stock Qty</div>
+                  <div>• Product Description</div>
+                  <div>• Product Highlights</div>
+                </div>
+                <div className="text-[10px] text-amber-600 font-medium pt-2 border-t border-gray-200">
+                  * HTML content in Description and Highlights will be automatically cleaned and parsed.
+                </div>
+              </div>
+
+              {/* Upload Input Area */}
+              <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center hover:bg-gray-50/50 hover:border-[var(--primary)] transition-all cursor-pointer relative"
+                   onClick={() => !bulkProcessing && bulkFileInputRef.current?.click()}>
+                <input 
+                  type="file" 
+                  ref={bulkFileInputRef} 
+                  onChange={handleBulkCSVProcess} 
+                  className="hidden" 
+                  accept=".csv"
+                  disabled={bulkProcessing}
+                />
+                
+                {bulkProcessing ? (
+                  <div className="flex flex-col items-center gap-3 py-4">
+                    <RefreshCw className="animate-spin text-[var(--primary)]" size={32} />
+                    <span className="font-bold text-sm text-gray-700 animate-pulse">Processing CSV data & uploading products...</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600 mb-2">
+                      <Upload size={24} />
+                    </div>
+                    <span className="font-bold text-sm text-gray-900">Click to upload CSV File</span>
+                    <span className="text-xs text-gray-400">or drag and drop your sheet file here</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Bulk Results Summary */}
+              {bulkResults && (
+                <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-300">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-gray-50 border border-gray-100 p-4 rounded-xl text-center">
+                      <div className="text-xs font-bold text-gray-400 uppercase">Total Rows</div>
+                      <div className="text-xl font-black text-gray-800">{bulkResults.total}</div>
+                    </div>
+                    <div className="bg-green-50 border border-green-100 p-4 rounded-xl text-center">
+                      <div className="text-xs font-bold text-green-500 uppercase">Uploaded</div>
+                      <div className="text-xl font-black text-green-600">{bulkResults.success}</div>
+                    </div>
+                    <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl text-center">
+                      <div className="text-xs font-bold text-amber-500 uppercase">Double Skip</div>
+                      <div className="text-xl font-black text-amber-600">{bulkResults.skippedDouble}</div>
+                    </div>
+                    <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-center">
+                      <div className="text-xs font-bold text-red-500 uppercase">Errors</div>
+                      <div className="text-xl font-black text-red-600">
+                        {bulkResults.skippedInvalidId + bulkResults.skippedInvalidCategory + bulkResults.skippedOther}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Errors / Warnings List Log */}
+                  {bulkResults.errors.length > 0 && (
+                    <div className="border border-gray-100 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-100">
+                        Process Log ({bulkResults.errors.length} items)
+                      </div>
+                      <div className="max-h-48 overflow-y-auto p-4 space-y-1.5 font-mono text-[11px] text-gray-600 bg-gray-50/30">
+                        {bulkResults.errors.map((err, i) => (
+                          <div key={i} className={`flex gap-2 items-start ${err.includes('already uploaded') || err.includes('double') ? 'text-amber-600' : 'text-red-500'}`}>
+                            <span className="font-bold shrink-0">•</span>
+                            <span>{err}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-4 mt-6 border-t border-gray-100 pt-6">
+              <button
+                onClick={() => {
+                  setIsBulkUploadOpen(false);
+                  setBulkResults(null);
+                }}
+                disabled={bulkProcessing}
+                className="flex-1 py-3.5 rounded-xl border border-gray-200 font-bold hover:bg-gray-50 transition-all text-center text-sm disabled:opacity-50"
+              >
+                Close Dialog
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+// ----------------------------------------------------------------------
+// HELPER FUNCTIONS FOR CSV PARSING AND HTML CLEANING
+// ----------------------------------------------------------------------
+
+function parseCSV(text: string): string[][] {
+  const lines: string[][] = [];
+  let row: string[] = [];
+  let currentVal = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (nextChar === '"') {
+          // Escaped quote inside double quotes
+          currentVal += '"';
+          i++; // Skip the next quote
+        } else {
+          // Closing quote
+          inQuotes = false;
+        }
+      } else {
+        currentVal += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        row.push(currentVal.trim());
+        currentVal = '';
+      } else if (char === '\n' || char === '\r') {
+        row.push(currentVal.trim());
+        currentVal = '';
+        if (row.some(val => val !== '') || char === '\n') {
+          lines.push(row);
+        }
+        row = [];
+        if (char === '\r' && nextChar === '\n') {
+          i++; // Skip newline after carriage return
+        }
+      } else {
+        currentVal += char;
+      }
+    }
+  }
+  if (row.length > 0 || currentVal !== '') {
+    row.push(currentVal.trim());
+    lines.push(row);
+  }
+  return lines;
+}
+
+function stripHtml(html: string): string {
+  if (!html) return '';
+  // 1. Remove all HTML tags
+  let text = html.replace(/<[^>]*>/g, '');
+  // 2. Decode common HTML entities
+  text = text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+  return text;
+}
+
+function parseHighlights(html: string): string[] {
+  if (!html) return [];
+  // Restore escaped double double-quotes
+  let cleaned = html.replace(/""/g, '"');
+  
+  // Try to match <li>...</li> tags first
+  const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+  const items: string[] = [];
+  let match;
+  
+  while ((match = liRegex.exec(cleaned)) !== null) {
+    let content = match[1];
+    content = stripHtml(content);
+    if (content.trim()) {
+      items.push(content.trim());
+    }
+  }
+  
+  if (items.length > 0) {
+    return items;
+  }
+  
+  // If no <li> tags, replace closing block tags and breaks with newlines
+  let text = cleaned
+    .replace(/<\/(p|div|h1|h2|h3|h4|h5|h6|pre|ol|ul|li)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n');
+    
+  // Strip all other HTML tags
+  text = stripHtml(text);
+  
+  // Split by newlines
+  const lines = text.split('\n');
+  return lines
+    .map(line => line.trim().replace(/^[•\-\*\s]+/, '').trim())
+    .filter(line => line.length > 0);
+}
+
+function cleanDescriptionHtml(html: string): string {
+  if (!html) return '';
+  // Restore escaped double double-quotes
+  let text = html.replace(/""/g, '"');
+
+  // Replace block elements closing tags with newline to preserve structure
+  text = text.replace(/<\/(p|div|h1|h2|h3|h4|h5|h6|pre|ol|ul)>/gi, '\n');
+  
+  // Replace list item tags with a bullet point and space
+  text = text.replace(/<li[^>]*>/gi, '\n• ');
+  
+  // Replace break tags with newline
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  
+  // Strip all remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+  
+  // Decode HTML entities
+  text = text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+    
+  // Normalize consecutive newlines and spaces
+  const lines = text.split('\n');
+  const cleanedLines = lines
+    .map(line => line.trim())
+    .filter((line, index, arr) => {
+      // Allow only one empty line spacing between paragraph blocks
+      if (line === '' && arr[index - 1] === '') return false;
+      return true;
+    });
+    
+  return cleanedLines.join('\n').trim();
 }

@@ -23,7 +23,8 @@ import {
   BadgeCheck,
   Lock,
   PackageCheck,
-  Share2
+  Share2,
+  Play
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -43,6 +44,7 @@ interface Product {
   variations?: any[];
   highlights?: string[];
   brand?: string;
+  video_url?: string;
 }
 
 interface Review {
@@ -70,6 +72,7 @@ export default function ProductDetailPage() {
   
   // Gallery & Selection State
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedMedia, setSelectedMedia] = useState<'video' | number>(0);
   const [selectedVariation, setSelectedVariation] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,6 +82,53 @@ export default function ProductDetailPage() {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showFullHighlights, setShowFullHighlights] = useState(false);
   const priceRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const getYoutubeId = (url: string) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const playYoutube = () => {
+    try {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'playVideo' }),
+          '*'
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const pauseYoutube = () => {
+    try {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'pauseVideo' }),
+          '*'
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(err => console.log('Autoplay blocked:', err));
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+  };
 
   // Swipe Gestures for Mobile Image Slider
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -99,16 +149,25 @@ export default function ProductDetailPage() {
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
-    
+
+    const mediaItems: Array<'video' | number> = [];
+    if (product?.video_url) {
+      mediaItems.push('video');
+    }
+    if (product?.images) {
+      product.images.forEach((_, idx) => mediaItems.push(idx));
+    }
+
+    if (mediaItems.length <= 1) return;
+    const currIdx = mediaItems.indexOf(selectedMedia);
+
     if (isLeftSwipe) {
-      if (product && product.images && product.images.length > 1) {
-        setCurrentImageIndex(prev => (prev + 1) % product.images.length);
-      }
+      const nextIdx = (currIdx + 1) % mediaItems.length;
+      setSelectedMedia(mediaItems[nextIdx]);
     }
     if (isRightSwipe) {
-      if (product && product.images && product.images.length > 1) {
-        setCurrentImageIndex(prev => (prev - 1 + product.images.length) % product.images.length);
-      }
+      const prevIdx = (currIdx - 1 + mediaItems.length) % mediaItems.length;
+      setSelectedMedia(mediaItems[prevIdx]);
     }
   };
 
@@ -218,6 +277,11 @@ export default function ProductDetailPage() {
     }
 
     setProduct(data);
+    if (data.video_url) {
+      setSelectedMedia('video');
+    } else {
+      setSelectedMedia(0);
+    }
 
     // Auto-select if only one variation exists
     if (data.variations && data.variations.length === 1) {
@@ -471,9 +535,43 @@ export default function ProductDetailPage() {
                 onTouchEnd={onTouchEnd}
                 className="w-full max-w-[320px] md:max-w-none mx-auto aspect-square rounded-[20px] bg-[#FAFAFA] border border-[#E5E7EB] overflow-hidden mb-4 group relative flex items-center justify-center select-none"
               >
-                {product.images?.[currentImageIndex] ? (
+                {selectedMedia === 'video' && product.video_url ? (
+                  getYoutubeId(product.video_url) ? (
+                    <div 
+                      className="w-full h-full relative"
+                      onMouseEnter={playYoutube}
+                      onMouseLeave={pauseYoutube}
+                    >
+                      <iframe
+                        ref={iframeRef}
+                        src={`https://www.youtube.com/embed/${getYoutubeId(product.video_url)}?enablejsapi=1&autoplay=1&mute=1&controls=1&loop=1&playlist=${getYoutubeId(product.video_url)}&playsinline=1&rel=0`}
+                        title="Product Video"
+                        className="w-full h-full absolute inset-0 border-0"
+                        allow="autoplay; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <div 
+                      className="w-full h-full relative flex items-center justify-center bg-black"
+                      onMouseEnter={handleMouseEnter}
+                      onMouseLeave={handleMouseLeave}
+                    >
+                      <video
+                        ref={videoRef}
+                        src={product.video_url}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        controls
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                  )
+                ) : product.images?.[selectedMedia as number] ? (
                   <img 
-                    src={product.images[currentImageIndex]} 
+                    src={product.images[selectedMedia as number]} 
                     alt={product.display_name} 
                     className="max-h-[240px] md:max-h-[380px] object-contain transition-transform duration-700 group-hover:scale-105 pointer-events-none" 
                   />
@@ -507,12 +605,38 @@ export default function ProductDetailPage() {
               
               {/* Desktop View: small thumbnail boxes */}
               <div className="hidden md:flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {product.video_url && (
+                  <button 
+                    onClick={() => setSelectedMedia('video')}
+                    className={`w-14 h-14 rounded-xl overflow-hidden border-2 bg-black flex-shrink-0 transition-all relative flex items-center justify-center ${
+                      selectedMedia === 'video' ? 'border-[#FF6A00]' : 'border-[#E5E7EB] hover:border-gray-300'
+                    }`}
+                  >
+                    {getYoutubeId(product.video_url) ? (
+                      <>
+                        <img 
+                          src={`https://img.youtube.com/vi/${getYoutubeId(product.video_url)}/mqdefault.jpg`} 
+                          alt="Video Thumbnail" 
+                          className="w-full h-full object-cover opacity-60" 
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center text-white bg-black/30">
+                          <Play size={16} fill="currentColor" />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-white gap-0.5 w-full h-full">
+                        <Play size={16} fill="currentColor" />
+                        <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Video</span>
+                      </div>
+                    )}
+                  </button>
+                )}
                 {product.images?.map((img, idx) => (
                   <button 
                     key={idx}
-                    onClick={() => setCurrentImageIndex(idx)}
+                    onClick={() => setSelectedMedia(idx)}
                     className={`w-14 h-14 rounded-xl overflow-hidden border-2 bg-[#FAFAFA] flex-shrink-0 transition-all ${
-                      currentImageIndex === idx ? 'border-[#FF6A00]' : 'border-[#E5E7EB] hover:border-gray-300'
+                      selectedMedia === idx ? 'border-[#FF6A00]' : 'border-[#E5E7EB] hover:border-gray-300'
                     }`}
                   >
                     <img src={img} alt="" className="w-full h-full object-contain p-1" />
@@ -521,14 +645,25 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Mobile View: Dots Pagination indicator */}
-              {product.images && product.images.length > 1 && (
+              {((product.images?.length || 0) + (product.video_url ? 1 : 0)) > 1 && (
                 <div className="flex md:hidden justify-center items-center gap-1.5 mt-3 mb-2">
-                  {product.images.map((_, idx) => (
+                  {product.video_url && (
+                    <button
+                      onClick={() => setSelectedMedia('video')}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        selectedMedia === 'video' 
+                          ? 'bg-[#FF6A00] w-4' 
+                          : 'bg-gray-300 hover:bg-gray-400'
+                      }`}
+                      aria-label="Go to product video"
+                    />
+                  )}
+                  {product.images?.map((_, idx) => (
                     <button
                       key={idx}
-                      onClick={() => setCurrentImageIndex(idx)}
+                      onClick={() => setSelectedMedia(idx)}
                       className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        currentImageIndex === idx 
+                        selectedMedia === idx 
                           ? 'bg-[#FF6A00] w-4' 
                           : 'bg-gray-300 hover:bg-gray-400'
                       }`}
@@ -617,52 +752,25 @@ export default function ProductDetailPage() {
                 )}
 
                 {/* 
-                  Best Price Structure & Quantity Selector combined row (Ref added for scroll tracking)
+                  Best Price Structure (Ref added for scroll tracking)
                 */}
-                <div ref={priceRef} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-[16px] mb-[20px] pb-5 border-b border-gray-100">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-baseline gap-1 leading-none">
-                      <span className="text-[14px] md:text-[18px] font-medium text-[#6B7280]">Rs.</span>
-                      <span className="text-[28px] md:text-[42px] font-extrabold text-[#111827] leading-none tracking-tight">
-                        {currentPrice}
+                <div ref={priceRef} className="flex flex-col gap-1 mt-[16px] mb-[20px] pb-5 border-b border-gray-100">
+                  <div className="flex items-baseline gap-1 leading-none">
+                    <span className="text-[14px] md:text-[18px] font-medium text-[#6B7280]">Rs.</span>
+                    <span className="text-[28px] md:text-[42px] font-extrabold text-[#111827] leading-none tracking-tight">
+                      {currentPrice}
+                    </span>
+                  </div>
+                  {oldPrice && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[14px] md:text-[18px] text-[#9CA3AF] line-through font-normal">
+                        Rs {oldPrice}
+                      </span>
+                      <span className="text-[11px] md:text-[14px] font-semibold text-[#15803D] bg-[#DCFCE7] px-1.5 py-0.5 rounded-[6px]">
+                        {discount}% OFF
                       </span>
                     </div>
-                    {oldPrice && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[14px] md:text-[18px] text-[#9CA3AF] line-through font-normal">
-                          Rs {oldPrice}
-                        </span>
-                        <span className="text-[11px] md:text-[14px] font-semibold text-[#15803D] bg-[#DCFCE7] px-1.5 py-0.5 rounded-[6px]">
-                          {discount}% OFF
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="text-[11px] md:text-xs font-black uppercase tracking-widest text-[#6B7280]">Qty:</span>
-                    <div className="flex items-center border border-[#E5E7EB] rounded-[12px] h-[38px] md:h-[46px] overflow-hidden bg-white shrink-0">
-                      <button 
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className="w-8 md:w-10 h-full flex items-center justify-center hover:bg-gray-50 text-[#6B7280] transition-colors"
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <span className="w-10 text-center text-[14px] md:text-[16px] font-semibold text-[#111827]">{displayQuantity}</span>
-                      <button 
-                        onClick={() => {
-                          if (displayQuantity < maxQuantity) {
-                            setQuantity(displayQuantity + 1);
-                          } else {
-                            alert(`Maximum stock limit of ${maxQuantity} reached.`);
-                          }
-                        }}
-                        className="w-8 md:w-10 h-full flex items-center justify-center hover:bg-gray-50 text-[#6B7280] transition-colors border-l border-gray-100"
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* 
@@ -696,6 +804,34 @@ export default function ProductDetailPage() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Quantity Section - Positioned above Add to Cart and Buy Now, and centered */}
+              <div className="flex justify-center mb-5 mt-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] md:text-xs font-black uppercase tracking-widest text-[#6B7280]">Qty:</span>
+                  <div className="flex items-center border border-[#E5E7EB] rounded-[12px] h-[38px] md:h-[46px] overflow-hidden bg-white shrink-0">
+                    <button 
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      className="w-8 md:w-10 h-full flex items-center justify-center hover:bg-gray-50 text-[#6B7280] transition-colors"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <span className="w-10 text-center text-[14px] md:text-[16px] font-semibold text-[#111827]">{displayQuantity}</span>
+                    <button 
+                      onClick={() => {
+                        if (displayQuantity < maxQuantity) {
+                          setQuantity(displayQuantity + 1);
+                        } else {
+                          alert(`Maximum stock limit of ${maxQuantity} reached.`);
+                        }
+                      }}
+                      className="w-8 md:w-10 h-full flex items-center justify-center hover:bg-gray-50 text-[#6B7280] transition-colors border-l border-gray-100"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* 
@@ -1035,7 +1171,7 @@ export default function ProductDetailPage() {
             
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
               {recommendedProducts.map((p) => (
-                <ProductCard key={p.id} product={p as any} />
+                <ProductCard key={p.id} product={p as any} viewMoreOption={true} />
               ))}
             </div>
           </div>
