@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Star } from 'lucide-react';
 import Link from 'next/link';
+import ProductCard from './ProductCard';
 
 interface Product {
   id: string;
@@ -127,86 +128,22 @@ export default function TopRankingSection() {
               const rank = index + 1;
 
               return (
-                <div 
-                  key={product.id} 
-                  className="bg-white border border-[#F1F5F9] rounded-[16px] md:rounded-[18px] overflow-hidden transition-all duration-300 w-full h-[250px] md:min-h-[385px] md:h-auto flex flex-col justify-between hover:-translate-y-1 hover:shadow-[0_10px_22px_rgba(0,0,0,0.06)] hover:border-[#FF6A00] group relative p-2.5 md:p-0"
-                >
-                  <Link href={`/products/${product.slug}`} className="block relative shrink-0">
-                    
-                    {/* Rank Badge: Smaller on mobile */}
-                    <div className="absolute top-1.5 left-1.5 md:top-3 md:left-3 z-10 w-5 h-5 md:w-[28px] md:h-[28px] rounded-full bg-gradient-to-br from-[#FF8A00] to-[#FF6A00] text-white flex items-center justify-center font-bold text-[10px] md:text-[12px] shadow-[0_2px_6px_rgba(255,106,0,0.3)]">
-                      {rank}
-                    </div>
-
-                    {/* Image Container: Max 120px height on mobile */}
-                    <div className="h-[120px] md:h-[210px] bg-[#FAFAFA] rounded-xl md:rounded-none p-2 md:p-4 flex items-center justify-center relative shrink-0 overflow-hidden">
-                      {product.images?.[0] ? (
-                        <img 
-                          src={product.images[0]} 
-                          alt={product.display_name} 
-                          loading="lazy"
-                          className="max-w-full max-h-[100px] md:max-h-[170px] object-contain transition-transform duration-500 group-hover:scale-105 pointer-events-none"
-                        />
-                      ) : (
-                        <div className="text-gray-300 text-xs">No Image</div>
-                      )}
-                    </div>
-                  </Link>
-
-                  {/* Card Content Area */}
-                  <div className="p-0 md:p-[14px] flex-1 flex flex-col justify-between mt-2 md:mt-0">
-                    <div>
-                      {/* Sold Info Badge */}
-                      <div className="flex mb-1 shrink-0">
-                        <span className="inline-flex items-center gap-1 bg-[#FFF3E6] text-[#EA580C] text-[10px] md:text-[11px] font-[600] px-[7px] py-[3px] md:px-[9px] md:py-[5px] rounded-full">
-                          🔥 {product.soldCount} Sold
-                        </span>
-                      </div>
-
-                      {/* Brand Name (Desktop Only to save height) */}
-                      {product.brand && product.brand !== 'No Brand' && (
-                        <div className="hidden md:flex flex-col gap-1.5 mt-2.5">
-                          <Link 
-                            href={`/brand/${product.brand.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-[11px] font-[700] tracking-[1px] uppercase text-[#4B5563] hover:text-[#FF6A00] transition-colors inline-block"
-                          >
-                            {product.brand}
-                          </Link>
-                          <div style={{ width: '24px', height: '2px', backgroundColor: '#E5E7EB', marginTop: '4px', marginBottom: '6px' }} />
-                        </div>
-                      )}
-
-                      {/* Product Name (Max 2 lines) */}
-                      <Link href={`/products/${product.slug}`}>
-                        <h3 
-                          className="text-[#111827] leading-[1.3] md:leading-[1.5] line-clamp-2 hover:text-[#FF6A00] transition-colors text-[13px] md:text-[15px] font-semibold h-[34px] md:h-[45px] overflow-hidden"
-                          style={{ 
-                            marginTop: '2px'
-                          }}
-                        >
-                          {product.display_name}
-                        </h3>
-                      </Link>
-                    </div>
-
-                    {/* Price + Rating Footer */}
-                    <div className="flex items-baseline justify-between w-full mt-auto pt-1.5 border-t border-gray-50 shrink-0">
-                      <div className="flex items-baseline leading-none">
-                        <span className="text-[11px] md:text-[13px] font-semibold text-[#6B7280] mr-0.5">Rs.</span>
-                        <span className="text-[16px] md:text-[34px] font-bold md:font-[800] text-[#111827] tracking-tight leading-none">{product.price}</span>
-                      </div>
-                      
-                      <div 
-                        className="flex items-center gap-0.5 select-none bg-[#FFF7ED] text-[#F59E0B] text-[10px] md:text-[12px] font-bold px-1.5 py-0.5 rounded-full"
-                      >
-                        <Star size={10} fill="#F59E0B" stroke="#F59E0B" className="md:w-3 md:h-3" />
-                        <span>{product.rating ? product.rating.toFixed(1) : '5.0'}</span>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
+                <ProductCard
+                  key={product.id}
+                  product={{
+                    id: product.id,
+                    display_name: product.display_name,
+                    slug: product.slug,
+                    regular_price: product.price, // map the base ranked price
+                    images: product.images,
+                    category: product.category,
+                    brand: product.brand,
+                    rating: product.rating,
+                    soldCount: product.soldCount
+                  }}
+                  variant="ranked"
+                  rank={rank}
+                />
               );
             })}
           </div>

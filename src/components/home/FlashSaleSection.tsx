@@ -6,6 +6,7 @@ import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/store/useCart';
+import ProductCard from './ProductCard';
 
 interface Product {
   id: string;
@@ -184,110 +185,27 @@ export default function FlashSaleSection() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 md:gap-5">
           {flashSales.map((sale) => {
             const p = sale.product;
-            const progress = Math.min(100, (sale.sold_qty / sale.total_stock) * 100);
             const isUpcoming = new Date(sale.start_time).getTime() > Date.now();
-            const discountPercent = Math.round(((p.regular_price - sale.flash_price) / p.regular_price) * 100);
             
             return (
-              <div 
-                key={sale.id} 
-                className="bg-white rounded-[16px] md:rounded-[20px] p-2.5 md:p-4 flex flex-col justify-between border border-[#E5E7EB] hover:shadow-[0_4px_18px_rgba(0,0,0,0.06)] transition-all duration-300 group w-full md:max-w-[200px] md:min-w-[180px] md:mx-auto h-[315px] md:h-auto"
-              >
-                {/* 1. Image Container with Badge Overlay */}
-                <Link 
-                  href={isUpcoming ? '#' : `/products/${p.slug}`} 
-                  className={`block relative mb-2 overflow-hidden rounded-xl bg-gray-50 shrink-0 h-[120px] md:h-auto md:aspect-square ${isUpcoming ? 'cursor-default' : ''}`}
-                >
-                  {p.images?.[0] ? (
-                    <img 
-                      src={p.images[0]} 
-                      alt={p.display_name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-300 pointer-events-none">
-                      ⏱
-                    </div>
-                  )}
-
-                  {/* Absolute Countdown Badge */}
-                  <div className="absolute top-1.5 left-1.5 z-10 shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
-                    <CountdownTimer targetTime={isUpcoming ? sale.start_time : sale.end_time} isUpcoming={isUpcoming} />
-                  </div>
-                </Link>
-
-                {/* 2. Brand Name (Desktop Only to save height) */}
-                {p.brand && p.brand !== 'No Brand' && (
-                  <div className="hidden md:flex flex-col gap-1 mt-1 shrink-0">
-                    <Link 
-                      href={isUpcoming ? '#' : `/brand/${p.brand.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '')}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[11px] font-[700] tracking-[1px] uppercase text-[#4B5563] hover:text-[#FF6A00] transition-colors inline-block"
-                    >
-                      {p.brand}
-                    </Link>
-                    <div style={{ width: '24px', height: '2px', backgroundColor: '#E5E7EB', marginTop: '4px', marginBottom: '6px' }} />
-                  </div>
-                )}
-
-                {/* 3. Product Title (Max 2 lines) */}
-                <div className="mb-1.5 overflow-hidden h-[36px] md:h-[40px] shrink-0">
-                  <Link href={isUpcoming ? '#' : `/products/${p.slug}`} className={isUpcoming ? 'cursor-default pointer-events-none' : ''}>
-                    <h3 
-                      className="text-[#111827] leading-[1.3] line-clamp-2 hover:text-[#FF6A00] transition-colors text-[13px] md:text-sm font-semibold"
-                    >
-                      {p.display_name}
-                    </h3>
-                  </Link>
-                </div>
-
-                {/* 4. Sold Progress Info */}
-                <div className="mb-1.5 shrink-0">
-                  <div className="flex justify-between items-center text-[10px] md:text-[11px] text-[#4B5563] font-semibold">
-                    <span>🔥 {sale.sold_qty} sold today</span>
-                  </div>
-                  <div className="w-full h-[3px] bg-gray-100 rounded-full overflow-hidden mt-1">
-                    <div 
-                      className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full transition-all duration-500"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* 5. Prices and Discount Badge */}
-                <div className="mb-2 flex flex-col gap-0.5 shrink-0">
-                  <div className="flex items-baseline flex-wrap gap-1.5">
-                    <span className="text-[16px] md:text-[18px] font-bold text-[#111827]">
-                      Rs.{isUpcoming ? '***' : sale.flash_price}
-                    </span>
-                    <span className="text-[#6B7280] line-through text-[11px] md:text-[12px] font-[400]">
-                      Rs.{p.regular_price}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="bg-[#DCFCE7] text-[#15803D] text-[10px] md:text-[11px] font-[700] px-1.5 py-0.5 rounded-[4px] inline-block">
-                      {discountPercent}% OFF
-                    </span>
-                  </div>
-                </div>
-
-                {/* 6. Buy Now Button */}
-                <button 
-                  onClick={() => {
-                    if (!isUpcoming) {
-                      handleBuyNow(sale);
-                    }
-                  }}
-                  disabled={isUpcoming}
-                  className={`w-full font-bold text-[13px] h-[36px] md:h-[40px] rounded-[10px] md:rounded-[12px] transition-all duration-300 flex items-center justify-center cursor-pointer border-none shrink-0 ${
-                    isUpcoming 
-                      ? 'bg-gray-150 text-gray-400 cursor-not-allowed' 
-                      : 'bg-[#FFA41C] text-[#111111] hover:bg-[#FA8900] shadow-sm shadow-[#FFA41C]/10'
-                  }`}
-                >
-                  {isUpcoming ? 'Dropping Soon' : 'Buy Now'}
-                </button>
-              </div>
+              <ProductCard
+                key={sale.id}
+                product={{
+                  id: p.id,
+                  display_name: p.display_name,
+                  slug: p.slug,
+                  regular_price: p.regular_price,
+                  special_price: sale.flash_price,
+                  images: p.images,
+                  category: p.category,
+                  brand: p.brand,
+                  soldCount: sale.sold_qty
+                }}
+                variant="flash-sale"
+                totalStock={sale.total_stock}
+                flashSaleExpiry={isUpcoming ? sale.start_time : sale.end_time}
+                isUpcoming={isUpcoming}
+              />
             );
           })}
         </div>
