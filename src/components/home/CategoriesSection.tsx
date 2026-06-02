@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Category {
   id: string;
@@ -85,10 +86,11 @@ export default function CategoriesSection() {
                 */}
                 <div className="w-[64px] h-[64px] md:w-[96px] md:h-[96px] rounded-full bg-[#F9FAFB] p-[8px] md:p-[12px] border border-[#E5E7EB] flex items-center justify-center transition-all duration-300 ease-in-out group-hover:-translate-y-1 group-hover:shadow-[0_8px_18px_rgba(0,0,0,0.08)] group-hover:border-[#FF6A00] shrink-0">
                   {category.image_url ? (
-                    <img 
+                    <Image 
                       src={category.image_url} 
                       alt={category.name} 
-                      loading="lazy"
+                      width={96}
+                      height={96}
                       className="w-full h-full object-contain pointer-events-none"
                     />
                   ) : (

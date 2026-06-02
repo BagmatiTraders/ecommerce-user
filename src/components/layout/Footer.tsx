@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { 
   MessageCircle, 
@@ -119,7 +120,7 @@ const Footer = () => {
           <div className="space-y-4 md:space-y-6">
             <Link href="/" className="flex items-center gap-2 text-white group justify-start">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF6A00] to-[#FFA41C] flex items-center justify-center overflow-hidden shadow-lg shadow-[#FF6A00]/20 transition-transform group-hover:scale-110">
-                <img src="/logo.png" alt="EcoMmerce Logo" className="w-full h-full object-cover" />
+                <Image src="/logo.png" alt="EcoMmerce Logo" width={40} height={40} className="w-full h-full object-cover" />
               </div>
               <span className="text-2xl font-black tracking-tight">{storeName}</span>
             </Link>
@@ -127,8 +128,13 @@ const Footer = () => {
               Elevating your lifestyle with curated premium products. Experience the future of seamless online shopping with 24/7 support and lightning-fast delivery.
             </p>
             <div className="flex gap-4 pt-2 justify-start">
-              {[MessageCircle, Camera, Send, Video].map((Icon, i) => (
-                <a key={i} href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-[#FF6A00] hover:text-white transition-all">
+              {[
+                { Icon: MessageCircle, label: "Chat on WhatsApp" },
+                { Icon: Camera, label: "Follow on Instagram" },
+                { Icon: Send, label: "Join Telegram" },
+                { Icon: Video, label: "Watch Videos" }
+              ].map(({ Icon, label }, i) => (
+                <a key={i} href="#" aria-label={label} className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-[#FF6A00] hover:text-white transition-all">
                   <Icon size={18} />
                 </a>
               ))}

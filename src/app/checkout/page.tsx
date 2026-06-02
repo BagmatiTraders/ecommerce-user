@@ -961,13 +961,7 @@ export default function CheckoutPage() {
             >
               {/* 26. ORDER SUMMARY TITLE */}
               <h2 
-                style={{
-                  fontSize: '22px',
-                  fontWeight: 700,
-                  color: '#111827',
-                  marginBottom: '20px'
-                }}
-                className="text-left"
+                className="text-lg md:text-[22px] font-[700] text-[#111827] mb-[20px] text-left"
               >
                 Order Summary
               </h2>
@@ -1036,14 +1030,14 @@ export default function CheckoutPage() {
                 <label className="text-[12px] font-[600] text-gray-500 ml-1">Promotional Coupon</label>
                 
                 {/* 31. BEST PROMO DESIGN LAYOUT */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full">
                   <input 
                     type="text" 
                     placeholder="Enter Promo Code" 
                     value={voucherCode}
                     onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
                     disabled={appliedVoucher !== null || applyingVoucher}
-                    className="flex-1 outline-none text-[14px] font-semibold tracking-wider text-[#111827] uppercase disabled:opacity-60 bg-white"
+                    className="flex-1 min-w-0 outline-none text-[14px] font-semibold tracking-wider text-[#111827] uppercase disabled:opacity-60 bg-white"
                     style={{
                       height: '46px',
                       borderRadius: '12px',
@@ -1209,22 +1203,10 @@ export default function CheckoutPage() {
 
                 {/* 33. TOTAL SECTION DESIGN */}
                 <div className="pt-5 border-t border-gray-100 flex items-center justify-between">
-                  <span 
-                    style={{
-                      fontSize: '18px',
-                      fontWeight: 600
-                    }}
-                  >
+                  <span className="text-sm md:text-lg font-[600]">
                     Total Amount
                   </span>
-                  <span 
-                    style={{
-                      fontSize: '34px',
-                      fontWeight: 800,
-                      lineHeight: 1,
-                      color: '#111827'
-                    }}
-                  >
+                  <span className="text-[20px] md:text-[34px] font-[800] text-[#111827] leading-none">
                     Rs. {grandTotal}
                   </span>
                 </div>
@@ -1303,13 +1285,13 @@ export default function CheckoutPage() {
             type="submit"
             form="checkout-form"
             disabled={isSubmitting || loadingLocations}
-            className="h-12 px-5 rounded-xl bg-[#FFA41C] border border-[#FF8F00] text-[#111111] font-bold text-sm flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#FA8900] shadow-sm shadow-[#FFA41C]/10"
+            className="h-12 px-4 md:px-5 rounded-xl bg-[#FFA41C] border border-[#FF8F00] text-[#111111] font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#FA8900] shadow-sm shadow-[#FFA41C]/10 shrink-0"
           >
             {isSubmitting ? (
               <RefreshCw className="animate-spin text-[#111111]" size={16} />
             ) : (
               <>
-                <span>Proceed</span>
+                <span>Proceed to Payment</span>
                 <ArrowRight size={14} />
               </>
             )}

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface CarouselImage {
   id: string;
@@ -198,17 +199,23 @@ export default function Carousel() {
             >
               {img.link ? (
                 <Link href={img.link} onClick={handleLinkClick} className="block w-full h-full relative cursor-pointer">
-                  <img 
+                  <Image 
                     src={getImageUrl(img)} 
                     alt={`Slide ${index + 1}`} 
-                    className="w-full h-full object-cover pointer-events-none"
+                    fill
+                    sizes="(max-width: 768px) 88vw, 100vw"
+                    priority={index === 0}
+                    className="object-cover pointer-events-none"
                   />
                 </Link>
               ) : (
-                <img 
+                <Image 
                   src={getImageUrl(img)} 
                   alt={`Slide ${index + 1}`} 
-                  className="w-full h-full object-cover pointer-events-none"
+                  fill
+                  sizes="(max-width: 768px) 88vw, 100vw"
+                  priority={index === 0}
+                  className="object-cover pointer-events-none"
                 />
               )}
             </div>
@@ -279,18 +286,24 @@ export default function Carousel() {
                 onClick={handleLinkClick}
                 className="block w-full h-full relative cursor-pointer group/link"
               >
-                <img 
+                <Image 
                   src={getImageUrl(img)} 
                   alt={`Slide ${index + 1}`} 
-                  className="w-full h-full object-cover transition-transform duration-1000 group-hover/link:scale-105 pointer-events-none"
+                  fill
+                  sizes="100vw"
+                  priority={index === 0}
+                  className="object-cover transition-transform duration-1000 group-hover/link:scale-105 pointer-events-none"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover/link:bg-black/5 transition-colors duration-300 pointer-events-none" />
               </Link>
             ) : (
-              <img 
+              <Image 
                 src={getImageUrl(img)} 
                 alt={`Slide ${index + 1}`} 
-                className="w-full h-full object-cover pointer-events-none"
+                fill
+                sizes="100vw"
+                priority={index === 0}
+                className="object-cover pointer-events-none"
               />
             )}
           </div>

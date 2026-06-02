@@ -29,6 +29,7 @@ interface ProductCardProps {
   isUpcoming?: boolean;
   hideAddToCart?: boolean;
   viewMoreOption?: boolean;
+  priority?: boolean;
 }
 
 const CountdownTimer = ({ targetTime, isUpcoming }: { targetTime: string; isUpcoming?: boolean }) => {
@@ -84,7 +85,8 @@ export default function ProductCard({
   flashSaleExpiry,
   isUpcoming = false,
   hideAddToCart = false, 
-  viewMoreOption = false 
+  viewMoreOption = false,
+  priority = false
 }: ProductCardProps) {
   const { addItem } = useCart();
   const router = useRouter();
@@ -216,7 +218,7 @@ export default function ProductCard({
     <div 
       onMouseEnter={() => router.prefetch(`/products/${product.slug}`)}
       className={`bg-white border border-[#F1F5F9] rounded-[16px] md:rounded-[18px] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_24px_rgba(0,0,0,0.06)] hover:border-[#FF6A00] group relative flex flex-col justify-between w-full p-2.5 md:p-0 ${
-        (hideAddToCart && !viewMoreOption && !isFlashSale && !isRanked) ? 'h-[265px] md:h-auto' : 'h-[315px] md:h-auto'
+        isRanked ? 'h-[248px] md:h-auto' : (hideAddToCart && !viewMoreOption && !isFlashSale) ? 'h-[265px] md:h-auto' : 'h-[315px] md:h-auto'
       }`}
     >
       
@@ -240,6 +242,7 @@ export default function ProductCard({
         <div className="absolute top-3 right-3 z-10 hidden md:flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <button 
             onClick={handleWishlist}
+            aria-label="Add to wishlist"
             className="w-9 h-9 rounded-full bg-white text-gray-600 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:scale-110 hover:text-red-500 transition-all cursor-pointer"
             title="Add to Wishlist"
           >
@@ -247,6 +250,7 @@ export default function ProductCard({
           </button>
           <button 
             onClick={handleQuickView}
+            aria-label="Quick view product"
             className="w-9 h-9 rounded-full bg-white text-gray-600 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:scale-110 hover:text-[#FF6A00] transition-all cursor-pointer"
             title="Quick View"
           >
@@ -254,6 +258,7 @@ export default function ProductCard({
           </button>
           <button 
             onClick={handleCompare}
+            aria-label="Compare product"
             className="w-9 h-9 rounded-full bg-white text-gray-600 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:scale-110 hover:text-blue-500 transition-all cursor-pointer"
             title="Compare"
           >
@@ -270,7 +275,7 @@ export default function ProductCard({
                 alt={product.display_name} 
                 fill
                 sizes="(max-width: 768px) 150px, 240px"
-                priority={false}
+                priority={priority}
                 className="object-contain transition-transform duration-500 group-hover:scale-105 pointer-events-none"
               />
             </div>

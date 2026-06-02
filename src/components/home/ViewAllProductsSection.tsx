@@ -53,25 +53,31 @@ export default function ViewAllProductsSection() {
   useEffect(() => {
     const fetchAndOrganize = async () => {
       try {
-        // 1. Fetch order items to calculate sales metrics
-        const { data: orderItems, error: oiError } = await supabase
-          .from('ecommerce_order_items')
-          .select('product_id, quantity');
-          
-        const salesMap: Record<string, number> = {};
-        if (!oiError && orderItems) {
-          orderItems.forEach((item: any) => {
-            salesMap[item.product_id] = (salesMap[item.product_id] || 0) + (item.quantity || 0);
-          });
-        }
-
-        // 2. Fetch active storefront products
+        // 1. Fetch active storefront products (limited to 60 with essential fields)
         const { data: activeProds, error: pError } = await supabase
           .from('ecommerce_products')
-          .select('*')
-          .eq('status', 'active');
+          .select('id, display_name, slug, regular_price, special_price, images, category, rating, reviews_count, created_at')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(60);
 
         if (pError) throw pError;
+
+        const salesMap: Record<string, number> = {};
+        if (activeProds && activeProds.length > 0) {
+          const productIds = activeProds.map((p: any) => p.id);
+          // 2. Fetch order items only for retrieved products
+          const { data: orderItems, error: oiError } = await supabase
+            .from('ecommerce_order_items')
+            .select('product_id, quantity')
+            .in('product_id', productIds);
+            
+          if (!oiError && orderItems) {
+            orderItems.forEach((item: any) => {
+              salesMap[item.product_id] = (salesMap[item.product_id] || 0) + (item.quantity || 0);
+            });
+          }
+        }
 
         if (activeProds) {
           const prods = activeProds.map((p: any) => ({
@@ -187,16 +193,14 @@ export default function ViewAllProductsSection() {
       <section className="mt-[16px] md:mt-[44px] pt-[14px] pb-[12px] md:py-[32px] bg-[#FAFAFA] select-none">
         <div className="container max-w-[1440px] mx-auto px-4 md:px-6">
           <div className="bg-white rounded-[24px] p-4 md:p-[28px] border border-[#F1F5F9] space-y-12">
-            {[1, 2, 3].map(row => (
-              <div key={row} className="space-y-6">
-                <div className="h-6 w-48 bg-gray-100 rounded-md animate-pulse"></div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="bg-white border border-[#EEF2F7] rounded-[18px] h-[315px] md:h-[380px] animate-pulse"></div>
-                  ))}
-                </div>
+            <div className="space-y-6">
+              <div className="h-6 w-48 bg-gray-100 rounded-md animate-pulse"></div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[20px]">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
+                  <div key={i} className={`bg-white border border-[#EEF2F7] rounded-[18px] h-[315px] md:h-[380px] animate-pulse ${i > 5 ? 'hidden lg:block' : ''}`}></div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>

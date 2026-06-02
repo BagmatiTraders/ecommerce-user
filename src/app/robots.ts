@@ -15,6 +15,6 @@ export default function robots(): MetadataRoute.Robots {
         '/auth',
       ],
     },
-    sitemap: 'https://bagmati.shop/sitemap.xml',
+    sitemap: 'https://www.bagmati.shop/sitemap.xml',
   };
 }

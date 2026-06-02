@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, ShoppingCart, User, Menu, X, Package, LogIn, Clock, ChevronRight, Truck, Star, Ticket, LogOut } from 'lucide-react';
+import Image from 'next/image';
 import { useCart } from '@/lib/store/useCart';
 import { supabase } from '@/lib/supabase';
 
@@ -389,7 +390,7 @@ const Header = () => {
         <div className="flex items-center gap-5 shrink-0">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center overflow-hidden transition-transform group-hover:rotate-12 animate-in zoom-in duration-300" style={{ background: 'var(--primary-gradient)' }}>
-              <img src="/logo.png" alt="EcoMmerce Logo" className="w-full h-full object-cover" />
+              <Image src="/logo.png" alt="EcoMmerce Logo" width={40} height={40} className="w-full h-full object-cover" />
             </div>
             <span className="text-[24px] font-[700] tracking-tight text-[#111827]">
               {storeName.split(' ')[0]}<span className="text-[#FF6A00]">{storeName.split(' ').slice(1).join(' ')}</span>
@@ -440,6 +441,7 @@ const Header = () => {
             />
             <button 
               type="submit" 
+              aria-label="Search products"
               className="w-[58px] h-[46px] shrink-0 bg-[#FFA41C] hover:bg-[#FA8900] text-[#111111] flex items-center justify-center transition-colors duration-300 cursor-pointer border-none"
             >
               <Search size={20} className="text-[#111111]" />
@@ -651,7 +653,7 @@ const Header = () => {
 
         {/* Right Side: Cart, Profile Actions */}
         <div className="flex items-center gap-4 shrink-0">
-          <Link href="/cart" className="p-2 rounded-full hover:bg-[var(--surface-1)] transition-all relative flex items-center justify-center">
+          <Link href="/cart" aria-label="Shopping cart" className="p-2 rounded-full hover:bg-[var(--surface-1)] transition-all relative flex items-center justify-center">
             <ShoppingCart size={24} className="text-[#111827]" />
             {cartCount > 0 && (
               <span 
@@ -817,6 +819,7 @@ const Header = () => {
         {/* Left Side: ☰ Hamburger Button */}
         <button 
           onClick={() => setIsMobileMenuOpen(true)}
+          aria-label="Open mobile menu"
           className="p-2 rounded-full hover:bg-gray-100 text-gray-800 transition-colors cursor-pointer border-none bg-transparent"
         >
           <Menu size={22} />
@@ -825,7 +828,7 @@ const Header = () => {
         {/* Center: Small Brand Logo */}
         <Link href="/" className="flex items-center gap-2 group absolute left-1/2 -translate-x-1/2">
           <div className="w-7 h-7 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: 'var(--primary-gradient)' }}>
-            <img src="/logo.png" alt="EcoMmerce Logo" className="w-full h-full object-cover" />
+            <Image src="/logo.png" alt="EcoMmerce Logo" width={28} height={28} className="w-full h-full object-cover" />
           </div>
           <span className="text-sm font-bold text-gray-900 tracking-tight">
             {storeName.split(' ')[0]}
@@ -839,6 +842,7 @@ const Header = () => {
           {!isScrolled && (
             <button 
               onClick={() => setIsSearchOpen(true)}
+              aria-label="Open search bar"
               className="p-2 rounded-full hover:bg-gray-100 text-gray-800 transition-all duration-300 cursor-pointer animate-in fade-in duration-200 border-none bg-transparent"
             >
               <Search size={22} />
@@ -846,7 +850,7 @@ const Header = () => {
           )}
 
           {/* Cart Icon & Badge */}
-          <Link href="/cart" className="p-2 rounded-full hover:bg-gray-100 transition-all relative flex items-center justify-center">
+          <Link href="/cart" aria-label="Shopping cart" className="p-2 rounded-full hover:bg-gray-100 transition-all relative flex items-center justify-center">
             <ShoppingCart size={22} className="text-gray-800" />
             {cartCount > 0 && (
               <span 
@@ -879,12 +883,13 @@ const Header = () => {
         <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: 'var(--primary-gradient)' }}>
-              <img src="/logo.png" alt="EcoMmerce Logo" className="w-full h-full object-cover" />
+              <Image src="/logo.png" alt="EcoMmerce Logo" width={32} height={32} className="w-full h-full object-cover" />
             </div>
             <span className="text-sm font-bold text-gray-900">{storeName}</span>
           </Link>
           <button 
             onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Close mobile menu"
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 cursor-pointer border-none bg-transparent"
           >
             <X size={18} />

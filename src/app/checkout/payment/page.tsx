@@ -704,13 +704,7 @@ export default function ChoosePaymentPage() {
               className="shadow-sm"
             >
               <h2 
-                style={{
-                  fontSize: '22px',
-                  fontWeight: 700,
-                  color: '#111827',
-                  marginBottom: '20px'
-                }}
-                className="text-left"
+                className="text-lg md:text-[22px] font-[700] text-[#111827] mb-[20px] text-left"
               >
                 Order Summary
               </h2>
@@ -805,22 +799,10 @@ export default function ChoosePaymentPage() {
 
                 {/* Total amount */}
                 <div className="pt-5 border-t border-gray-100 flex items-center justify-between">
-                  <span 
-                    style={{
-                      fontSize: '18px',
-                      fontWeight: 600
-                    }}
-                  >
+                  <span className="text-sm md:text-lg font-[600]">
                     Total Amount
                   </span>
-                  <span 
-                    style={{
-                      fontSize: '34px',
-                      fontWeight: 800,
-                      lineHeight: 1,
-                      color: '#111827'
-                    }}
-                  >
+                  <span className="text-[20px] md:text-[34px] font-[800] text-[#111827] leading-none">
                     Rs. {grandTotal}
                   </span>
                 </div>

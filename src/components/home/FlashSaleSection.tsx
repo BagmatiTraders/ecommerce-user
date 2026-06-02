@@ -183,7 +183,7 @@ export default function FlashSaleSection() {
 
         {/* Responsive Grid Layout */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 md:gap-5">
-          {flashSales.map((sale) => {
+          {flashSales.map((sale, index) => {
             const p = sale.product;
             const isUpcoming = new Date(sale.start_time).getTime() > Date.now();
             
@@ -205,6 +205,7 @@ export default function FlashSaleSection() {
                 totalStock={sale.total_stock}
                 flashSaleExpiry={isUpcoming ? sale.start_time : sale.end_time}
                 isUpcoming={isUpcoming}
+                priority={index < 2}
               />
             );
           })}

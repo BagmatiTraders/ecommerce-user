@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 const slugify = (str: string) => str.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://bagmati.shop';
+  const baseUrl = 'https://www.bagmati.shop';
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 

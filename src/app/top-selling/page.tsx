@@ -37,10 +37,10 @@ export default function TopSellingPage() {
           });
         }
 
-        // 2. Fetch active storefront products
+        // 2. Fetch active storefront products (retrieve only essential fields)
         const { data: activeProds, error: pError } = await supabase
           .from('ecommerce_products')
-          .select('*')
+          .select('id, display_name, slug, regular_price, special_price, images, category, rating, brand')
           .eq('status', 'active');
 
         if (pError) throw pError;

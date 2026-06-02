@@ -37,10 +37,10 @@ export default function TopRankingSection() {
           });
         }
 
-        // 2. Fetch active storefront products
+        // 2. Fetch active storefront products (retrieve only essential fields)
         const { data: activeProds, error: pError } = await supabase
           .from('ecommerce_products')
-          .select('*')
+          .select('id, display_name, slug, regular_price, special_price, images, category, rating, brand')
           .eq('status', 'active');
 
         if (pError) throw pError;
@@ -58,8 +58,8 @@ export default function TopRankingSection() {
             return b.rating - a.rating; // Tie-breaker by rating
           });
 
-          // Limit to top 5 for the grid
-          setProducts(rankedProducts.slice(0, 5));
+          // Limit to top 6 for the grid (showing 3 rows x 2 columns on mobile)
+          setProducts(rankedProducts.slice(0, 6));
         }
       } catch (err) {
         console.error('Error calculating top ranking products:', err);
@@ -81,7 +81,7 @@ export default function TopRankingSection() {
               <div className="h-4 w-16 md:h-10 md:w-28 bg-gray-100 rounded-full"></div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[18px]">
-              {[1, 2, 3, 4, 5].map((i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="bg-white border border-[#F1F5F9] rounded-[16px] md:rounded-[18px] w-full h-[250px] md:min-h-[385px] md:h-auto"></div>
               ))}
             </div>
@@ -143,6 +143,7 @@ export default function TopRankingSection() {
                   }}
                   variant="ranked"
                   rank={rank}
+                  priority={index < 2}
                 />
               );
             })}
