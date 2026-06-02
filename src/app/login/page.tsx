@@ -36,6 +36,9 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [storeName, setStoreName] = useState('Ecommerce');
+  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,6 +61,27 @@ function LoginContent() {
       setError(decodeURIComponent(errParam));
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    const savedStoreName = localStorage.getItem('storeName');
+    if (savedStoreName) {
+      setStoreName(savedStoreName);
+    }
+    const fetchStoreName = async () => {
+      try {
+        const { data } = await supabase
+          .from('app_settings')
+          .select('*')
+          .eq('key', 'store_settings')
+          .maybeSingle();
+        if (data && data.value && data.value.store_name) {
+          setStoreName(data.value.store_name);
+          localStorage.setItem('storeName', data.value.store_name);
+        }
+      } catch (_) {}
+    };
+    fetchStoreName();
+  }, []);
 
   // Cooldown countdown timer for OTP resend
   useEffect(() => {
@@ -155,6 +179,29 @@ function LoginContent() {
       if (facebookError) throw facebookError;
     } catch (err: any) {
       setError(err.message || 'Failed to initialize Facebook Sign-In. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) return;
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/auth/callback?next=/auth/update-password`,
+      });
+
+      if (resetError) throw resetError;
+
+      setSuccess('If this email is registered, a password reset link has been sent to it. Please check your inbox.');
+    } catch (err: any) {
+      setError(err.message || 'An error occurred. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
@@ -257,10 +304,12 @@ function LoginContent() {
       <div className="hidden md:flex md:w-[45%] bg-gradient-to-br from-[#FFEDD5] to-[#FFF7ED] p-10 flex-col justify-between relative overflow-hidden">
         {/* Logo element */}
         <Link href="/" className="flex items-center gap-2.5 z-10 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-[#FF6A00] text-white flex items-center justify-center shadow-lg font-[800] text-lg">
-            E
+          <div className="w-10 h-10 rounded-xl bg-white border border-[#EEF2F7] flex items-center justify-center overflow-hidden shadow-lg">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
           </div>
-          <span className="text-xl font-[800] text-[#111827] tracking-tight">Eco<span className="text-[#FF6A00]">mmerce</span></span>
+          <span className="text-xl font-[800] text-[#111827] tracking-tight">
+            {storeName.split(' ')[0]}<span className="text-[#FF6A00]">{storeName.split(' ').slice(1).join(' ')}</span>
+          </span>
         </Link>
 
         {/* Core Content Grid */}
@@ -310,34 +359,36 @@ function LoginContent() {
           </div>
 
           {/* OTP / Password switcher tabs */}
-          <div className="flex bg-[#F1F5F9] p-1 rounded-xl mt-8">
-            <button
-              type="button"
-              onClick={() => {
-                setIsOtpMode(false);
-                setError(null);
-                setSuccess(null);
-              }}
-              className={`flex-1 py-2.5 text-xs font-[700] rounded-lg transition-all cursor-pointer ${
-                !isOtpMode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              Password Login
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsOtpMode(true);
-                setError(null);
-                setSuccess(null);
-              }}
-              className={`flex-1 py-2.5 text-xs font-[700] rounded-lg transition-all cursor-pointer ${
-                isOtpMode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              Login with OTP
-            </button>
-          </div>
+          {!isForgotPasswordMode && (
+            <div className="flex bg-[#F1F5F9] p-1 rounded-xl mt-8">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOtpMode(false);
+                  setError(null);
+                  setSuccess(null);
+                }}
+                className={`flex-1 py-2.5 text-xs font-[700] rounded-lg transition-all cursor-pointer ${
+                  !isOtpMode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Password Login
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOtpMode(true);
+                  setError(null);
+                  setSuccess(null);
+                }}
+                className={`flex-1 py-2.5 text-xs font-[700] rounded-lg transition-all cursor-pointer ${
+                  isOtpMode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Login with OTP
+              </button>
+            </div>
+          )}
 
           {/* Error Message Box */}
           {error && (
@@ -356,7 +407,47 @@ function LoginContent() {
           )}
 
           {/* Form Area */}
-          {!isOtpMode ? (
+          {isForgotPasswordMode ? (
+            /* Forgot password form */
+            <form onSubmit={handleForgotPassword} className="mt-8 flex flex-col gap-5 animate-in slide-in-from-right-4 duration-300">
+              <div className="space-y-2">
+                <label className="text-[14px] font-[600] text-[#374151] block ml-1">Email Address</label>
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#FF6A00] transition-colors" size={18} />
+                  <input 
+                    type="email" 
+                    placeholder="name@example.com"
+                    className="w-full h-[52px] pl-11 pr-4 rounded-[14px] border border-[#E5E7EB] bg-white focus:border-[#FF6A00] outline-none focus:ring-4 focus:ring-[#FF6A00]/8 transition-all font-[500] text-[15px] text-[#111827]"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full h-[54px] bg-[#FF6A00] hover:bg-[#E85D00] text-white font-[600] text-[15px] rounded-[14px] transition-all flex items-center justify-center gap-2.5 active:scale-[0.99] cursor-pointer shadow-lg shadow-orange-500/10 disabled:opacity-50 mt-2"
+              >
+                {loading ? <Loader2 className="animate-spin" size={18} /> : 'Send Reset Link'}
+              </button>
+
+              <div className="text-center mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPasswordMode(false);
+                    setError(null);
+                    setSuccess(null);
+                  }}
+                  className="text-[13px] font-[600] text-[#FF6A00] hover:underline bg-transparent border-none cursor-pointer"
+                >
+                  Back to Login
+                </button>
+              </div>
+            </form>
+          ) : !isOtpMode ? (
             /* Password login form */
             <form onSubmit={handlePasswordLogin} className="mt-8 flex flex-col gap-5">
               <div className="space-y-2">
@@ -385,7 +476,17 @@ function LoginContent() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center px-1">
                   <label className="text-[14px] font-[600] text-[#374151]">Password</label>
-                  <Link href="#" className="text-[13px] font-[500] text-[#FF6A00] hover:underline">Forgot Password?</Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPasswordMode(true);
+                      setError(null);
+                      setSuccess(null);
+                    }}
+                    className="text-[13px] font-[500] text-[#FF6A00] hover:underline bg-transparent border-none cursor-pointer"
+                  >
+                    Forgot Password?
+                  </button>
                 </div>
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#FF6A00] transition-colors" size={18} />
