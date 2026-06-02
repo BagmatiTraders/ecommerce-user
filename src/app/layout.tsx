@@ -33,6 +33,9 @@ export const metadata: Metadata = {
     description: "Shop premium. Shop fast. Shop secure.",
     creator: "@ecommerce",
   },
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export const viewport = {

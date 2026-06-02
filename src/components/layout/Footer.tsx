@@ -118,8 +118,8 @@ const Footer = () => {
           {/* Brand Column */}
           <div className="space-y-4 md:space-y-6">
             <Link href="/" className="flex items-center gap-2 text-white group justify-start">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF6A00] to-[#FFA41C] flex items-center justify-center shadow-lg shadow-[#FF6A00]/20 transition-transform group-hover:scale-110">
-                <span className="text-white font-bold text-xl">{firstLetter}</span>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF6A00] to-[#FFA41C] flex items-center justify-center overflow-hidden shadow-lg shadow-[#FF6A00]/20 transition-transform group-hover:scale-110">
+                <img src="/logo.png" alt="EcoMmerce Logo" className="w-full h-full object-cover" />
               </div>
               <span className="text-2xl font-black tracking-tight">{storeName}</span>
             </Link>

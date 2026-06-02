@@ -388,8 +388,8 @@ const Header = () => {
         {/* Left Side: Brand Logo and Category Menu */}
         <div className="flex items-center gap-5 shrink-0">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-12 animate-in zoom-in duration-300" style={{ background: 'var(--primary-gradient)' }}>
-              <span className="text-white font-bold text-xl">{firstLetter}</span>
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center overflow-hidden transition-transform group-hover:rotate-12 animate-in zoom-in duration-300" style={{ background: 'var(--primary-gradient)' }}>
+              <img src="/logo.png" alt="EcoMmerce Logo" className="w-full h-full object-cover" />
             </div>
             <span className="text-[24px] font-[700] tracking-tight text-[#111827]">
               {storeName.split(' ')[0]}<span className="text-[#FF6A00]">{storeName.split(' ').slice(1).join(' ')}</span>
@@ -824,8 +824,8 @@ const Header = () => {
 
         {/* Center: Small Brand Logo */}
         <Link href="/" className="flex items-center gap-2 group absolute left-1/2 -translate-x-1/2">
-          <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary-gradient)' }}>
-            <span className="text-white font-bold text-sm">{firstLetter}</span>
+          <div className="w-7 h-7 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: 'var(--primary-gradient)' }}>
+            <img src="/logo.png" alt="EcoMmerce Logo" className="w-full h-full object-cover" />
           </div>
           <span className="text-sm font-bold text-gray-900 tracking-tight">
             {storeName.split(' ')[0]}
@@ -878,8 +878,8 @@ const Header = () => {
         {/* Drawer Header */}
         <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary-gradient)' }}>
-              <span className="text-white font-bold text-sm">{firstLetter}</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: 'var(--primary-gradient)' }}>
+              <img src="/logo.png" alt="EcoMmerce Logo" className="w-full h-full object-cover" />
             </div>
             <span className="text-sm font-bold text-gray-900">{storeName}</span>
           </Link>
