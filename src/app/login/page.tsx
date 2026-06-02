@@ -139,6 +139,26 @@ function LoginContent() {
     }
   };
 
+  const handleFacebookLogin = async () => {
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const { error: facebookError } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (facebookError) throw facebookError;
+    } catch (err: any) {
+      setError(err.message || 'Failed to initialize Facebook Sign-In. Please try again.');
+      setLoading(false);
+    }
+  };
+
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone) {
@@ -510,9 +530,7 @@ function LoginContent() {
             {/* Facebook login button */}
             <button 
               type="button"
-              onClick={() => {
-                setSuccess('Facebook OAuth mock initialized');
-              }}
+              onClick={handleFacebookLogin}
               className="h-[52px] rounded-[14px] border border-[#E5E7EB] bg-white hover:bg-[#F9FAFB] transition-all flex items-center justify-center gap-2.5 text-[14px] font-[600] text-gray-700 cursor-pointer"
             >
               <svg className="w-5 h-5 fill-[#1877F2] shrink-0" viewBox="0 0 24 24">
