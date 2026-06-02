@@ -358,37 +358,7 @@ function LoginContent() {
             <p className="text-[15px] text-[#6B7280] mt-2">Login to continue shopping</p>
           </div>
 
-          {/* OTP / Password switcher tabs */}
-          {!isForgotPasswordMode && (
-            <div className="flex bg-[#F1F5F9] p-1 rounded-xl mt-8">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOtpMode(false);
-                  setError(null);
-                  setSuccess(null);
-                }}
-                className={`flex-1 py-2.5 text-xs font-[700] rounded-lg transition-all cursor-pointer ${
-                  !isOtpMode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                Password Login
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOtpMode(true);
-                  setError(null);
-                  setSuccess(null);
-                }}
-                className={`flex-1 py-2.5 text-xs font-[700] rounded-lg transition-all cursor-pointer ${
-                  isOtpMode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                Login with OTP
-              </button>
-            </div>
-          )}
+
 
           {/* Error Message Box */}
           {error && (
