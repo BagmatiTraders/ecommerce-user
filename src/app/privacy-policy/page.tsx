@@ -1,9 +1,13 @@
-'use client';
-
+import { Metadata } from 'next';
 import React from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { ShieldCheck, Eye, Key, UserCheck } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy | Bagmati Shop',
+  description: 'Read the privacy policy of Bagmati Shop. Learn about our commitment to protecting your personal data, secure processing, and data security.',
+};
 
 export default function PrivacyPolicyPage() {
   return (

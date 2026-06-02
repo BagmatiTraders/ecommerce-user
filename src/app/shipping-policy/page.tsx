@@ -1,9 +1,13 @@
-'use client';
-
+import { Metadata } from 'next';
 import React from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Truck, Navigation, ShieldCheck, MapPin } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Shipping Policy & Delivery Timelines | Bagmati Shop',
+  description: 'View shipping costs and timelines for inside and outside Kathmandu Valley. Learn about order verification, packing, and free shipping options.',
+};
 
 export default function ShippingPolicyPage() {
   return (

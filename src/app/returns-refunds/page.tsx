@@ -1,9 +1,13 @@
-'use client';
-
+import { Metadata } from 'next';
 import React from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { ShieldAlert, RefreshCw, XCircle, CheckCircle2, Clock } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Returns & Refunds Policy | Bagmati Shop',
+  description: 'Understand the Returns & Refunds policy of Bagmati Shop. Learn about our conditions for damage, wrong products, and instant delivery-time checks.',
+};
 
 export default function ReturnsRefundsPage() {
   return (
