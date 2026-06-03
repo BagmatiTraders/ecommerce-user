@@ -4,64 +4,74 @@ import { cookies } from 'next/headers';
 
 const slugify = (str: string) => str.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
+// Static URLs — always use www.bagmati.shop consistently
+const BASE_URL = 'https://www.bagmati.shop';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://www.bagmati.shop';
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-
-  // Fetch active products
-  const { data: products } = await supabase
-    .from('ecommerce_products')
-    .select('slug, updated_at, brand')
-    .eq('status', 'active');
-
-  const productList = products || [];
-
-  // Generate dynamic product URLs
-  const productUrls = productList.map((p) => ({
-    url: `${baseUrl}/products/${p.slug}`,
-    lastModified: new Date(p.updated_at || Date.now()),
-    changeFrequency: 'daily' as const,
-    priority: 0.8,
-  }));
-
-  // Generate dynamic brand URLs (extract unique brand names)
-  const uniqueBrands = Array.from(
-    new Set(
-      productList
-        .map((p) => p.brand)
-        .filter((brand): brand is string => !!brand && brand !== 'No Brand')
-    )
-  );
-
-  const brandUrls = uniqueBrands.map((brand) => ({
-    url: `${baseUrl}/brand/${slugify(brand)}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly' as const,
-    priority: 0.6,
-  }));
-
-  // Static URLs
-  const staticUrls = [
+  // Static URLs (always included even if DB fails)
+  const staticUrls: MetadataRoute.Sitemap = [
     {
-      url: baseUrl,
+      url: BASE_URL,
       lastModified: new Date(),
-      changeFrequency: 'daily' as const,
+      changeFrequency: 'daily',
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/products`,
+      url: `${BASE_URL}/products`,
       lastModified: new Date(),
-      changeFrequency: 'daily' as const,
+      changeFrequency: 'daily',
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/flash-sales`,
+      url: `${BASE_URL}/flash-sales`,
       lastModified: new Date(),
-      changeFrequency: 'hourly' as const,
+      changeFrequency: 'hourly',
       priority: 0.8,
     },
   ];
 
-  return [...staticUrls, ...productUrls, ...brandUrls];
+  try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+
+    // Fetch active products
+    const { data: products, error } = await supabase
+      .from('ecommerce_products')
+      .select('slug, updated_at, brand')
+      .eq('status', 'active');
+
+    if (error || !products) {
+      // If DB is unreachable, still return static URLs so sitemap doesn't break
+      return staticUrls;
+    }
+
+    // Generate dynamic product URLs
+    const productUrls: MetadataRoute.Sitemap = products.map((p) => ({
+      url: `${BASE_URL}/products/${p.slug}`,
+      lastModified: new Date(p.updated_at || Date.now()),
+      changeFrequency: 'daily',
+      priority: 0.8,
+    }));
+
+    // Generate dynamic brand URLs (unique brands only)
+    const uniqueBrands = Array.from(
+      new Set(
+        products
+          .map((p) => p.brand)
+          .filter((brand): brand is string => !!brand && brand !== 'No Brand')
+      )
+    );
+
+    const brandUrls: MetadataRoute.Sitemap = uniqueBrands.map((brand) => ({
+      url: `${BASE_URL}/brand/${slugify(brand)}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    }));
+
+    return [...staticUrls, ...productUrls, ...brandUrls];
+  } catch {
+    // Fallback: return static URLs only
+    return staticUrls;
+  }
 }

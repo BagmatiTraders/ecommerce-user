@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { trackEvent } from '@/utils/analytics';
 
 export interface CartItem {
   id: string;
@@ -30,6 +31,15 @@ export const useCart = create<CartStore>()(
     (set, get) => ({
       items: [],
       addItem: (item) => {
+        // Track add to cart event
+        trackEvent('add_to_cart', {
+          product_id: item.id,
+          product_name: item.display_name,
+          price: item.price,
+          quantity: item.quantity,
+          category: item.category || 'unknown'
+        });
+
         const currentItems = get().items;
         const existingItem = currentItems.find((i) => i.id === item.id);
 

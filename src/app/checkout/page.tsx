@@ -5,6 +5,7 @@ import Header from '@/components/layout/Header';
 import { useCart } from '@/lib/store/useCart';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { trackEvent } from '@/utils/analytics';
 import { 
   ArrowLeft,
   ArrowRight,
@@ -185,6 +186,9 @@ export default function CheckoutPage() {
       fetchDeliveryLocations();
       loadAuthenticatedUser();
       validatePrices(supabase);
+      if (items.length > 0) {
+        trackEvent('checkout_start');
+      }
     }
   }, [items, isMounted]);
 

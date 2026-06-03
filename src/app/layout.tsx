@@ -19,13 +19,16 @@ export const metadata: Metadata = {
   creator: "Bagmati Shop Team",
   publisher: "Bagmati Traders",
   robots: "index, follow",
+  alternates: {
+    canonical: "https://www.bagmati.shop",
+  },
   openGraph: {
     title: "Bagmati Shop | Elevate Your Lifestyle",
     description: "Discover a curated collection of high-end products at Bagmati Shop. Experience the next generation of online shopping.",
     type: "website",
     locale: "en_US",
     siteName: "Bagmati Shop",
-    url: "https://bagmati.shop",
+    url: "https://www.bagmati.shop",
   },
   twitter: {
     card: "summary_large_image",
@@ -45,6 +48,7 @@ export const viewport = {
 
 import Footer from "@/components/layout/Footer";
 import Script from "next/script";
+import TrafficTracker from "@/components/layout/TrafficTracker";
 
 export default function RootLayout({
   children,
@@ -64,11 +68,43 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-Q637T9HD97');
+            gtag('config', 'G-Q637T9HD97', {
+              send_page_view: true
+            });
           `}
         </Script>
+
+        {/* Meta Pixel Code */}
+        <Script id="meta-pixel" strategy="afterInteractive">
+          {`
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '${process.env.NEXT_PUBLIC_META_PIXEL_ID || 'YOUR_PIXEL_ID_HERE'}');
+            fbq('track', 'PageView');
+          `}
+        </Script>
+
+        {/* Microsoft Clarity Code */}
+        {process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID && (
+          <Script id="microsoft-clarity" strategy="afterInteractive">
+            {`
+              (function(c,l,a,r,i,t,y){
+                  c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                  t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+              })(window,document,"clarity","script","${process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID}");
+            `}
+          </Script>
+        )}
       </head>
       <body style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <TrafficTracker />
         <div style={{ flex: 1 }}>
           {children}
         </div>

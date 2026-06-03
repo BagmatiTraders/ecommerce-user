@@ -13,6 +13,22 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Redirect non-www to www so Google treats www.bagmati.shop as the canonical domain
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'bagmati.shop',
+          },
+        ],
+        destination: 'https://www.bagmati.shop/:path*',
+        permanent: true, // 301 redirect — tells Google to update its index
+      },
+    ];
+  },
 };
 
 export default nextConfig;

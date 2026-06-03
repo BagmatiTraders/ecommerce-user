@@ -21,6 +21,7 @@ import {
   MapPin
 } from 'lucide-react';
 import Link from 'next/link';
+import { getStoredAttribution, getFacebookCookies } from '@/utils/analytics';
 
 interface PaymentMethod {
   id: string;
@@ -159,6 +160,21 @@ export default function ChoosePaymentPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
+      // Retrieve marketing and pixel parameters
+      const attribution = getStoredAttribution() || {};
+      const fbCookies = getFacebookCookies();
+      const userAgent = typeof window !== 'undefined' ? window.navigator.userAgent : '';
+      
+      let clientIp = '';
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 800);
+        const ipRes = await fetch('https://api.ipify.org?format=json', { signal: controller.signal })
+          .then(r => r.json());
+        clearTimeout(timeoutId);
+        clientIp = ipRes.ip || '';
+      } catch (_) {}
+
       const { data: order, error: orderError } = await supabase
         .from('ecommerce_orders')
         .insert({
@@ -172,7 +188,17 @@ export default function ChoosePaymentPage() {
           total_amount: grandTotal,
           device_id: deviceId,
           applied_voucher_id: appliedVoucher ? appliedVoucher.id : null,
-          discount_amount: totalDiscount
+          discount_amount: totalDiscount,
+          // Marketing & click attribution parameters
+          utm_source: attribution.utm_source || null,
+          utm_medium: attribution.utm_medium || null,
+          utm_campaign: attribution.utm_campaign || null,
+          gclid: attribution.gclid || null,
+          fbclid: attribution.fbclid || null,
+          fbp_cookie: fbCookies._fbp || null,
+          fbc_cookie: fbCookies._fbc || null,
+          ip_address: clientIp || null,
+          user_agent: userAgent || null
         })
         .select()
         .single();
@@ -193,6 +219,42 @@ export default function ChoosePaymentPage() {
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
+
+      // Trigger analytics Purchase conversion events (GA4 & Meta Pixel)
+      try {
+        if (typeof window !== 'undefined') {
+          // Google Analytics Purchase
+          if ((window as any).gtag) {
+            (window as any).gtag('event', 'purchase', {
+              transaction_id: generatedOrderNumber,
+              value: grandTotal,
+              currency: 'NPR',
+              shipping: activeRoute.delivery_charge,
+              items: items.map(item => ({
+                item_id: item.id,
+                item_name: item.display_name,
+                price: item.price,
+                quantity: item.quantity
+              }))
+            });
+          }
+
+          // Meta Pixel Purchase
+          if ((window as any).fbq) {
+            (window as any).fbq('track', 'Purchase', {
+              value: grandTotal,
+              currency: 'NPR',
+              content_type: 'product',
+              contents: items.map(item => ({
+                id: item.id,
+                quantity: item.quantity
+              }))
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fire ad tracking pixel events:', err);
+      }
 
       // Log purchases for search analytics (fire-and-forget)
       try {
