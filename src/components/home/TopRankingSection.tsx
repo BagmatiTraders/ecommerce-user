@@ -82,7 +82,10 @@ export default function TopRankingSection() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-[18px]">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-white border border-[#F1F5F9] rounded-[16px] md:rounded-[18px] w-full h-[250px] md:min-h-[385px] md:h-auto"></div>
+                <div 
+                  key={i} 
+                  className={`bg-white border border-[#F1F5F9] rounded-[16px] md:rounded-[18px] w-full h-[250px] md:min-h-[385px] md:h-auto ${i === 6 ? 'lg:hidden' : ''}`}
+                ></div>
               ))}
             </div>
           </div>
@@ -128,23 +131,24 @@ export default function TopRankingSection() {
               const rank = index + 1;
 
               return (
-                <ProductCard
-                  key={product.id}
-                  product={{
-                    id: product.id,
-                    display_name: product.display_name,
-                    slug: product.slug,
-                    regular_price: product.price, // map the base ranked price
-                    images: product.images,
-                    category: product.category,
-                    brand: product.brand,
-                    rating: product.rating,
-                    soldCount: product.soldCount
-                  }}
-                  variant="ranked"
-                  rank={rank}
-                  priority={index < 2}
-                />
+                <div key={product.id} className={index === 5 ? 'lg:hidden' : ''}>
+                  <ProductCard
+                    product={{
+                      id: product.id,
+                      display_name: product.display_name,
+                      slug: product.slug,
+                      regular_price: product.price, // map the base ranked price
+                      images: product.images,
+                      category: product.category,
+                      brand: product.brand,
+                      rating: product.rating,
+                      soldCount: product.soldCount
+                    }}
+                    variant="ranked"
+                    rank={rank}
+                    priority={index < 2}
+                  />
+                </div>
               );
             })}
           </div>
