@@ -29,6 +29,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [accountExists, setAccountExists] = useState(false); // Email already registered
   const [storeName, setStoreName] = useState('Ecommerce');
   const router = useRouter();
 
@@ -157,11 +158,26 @@ export default function SignupPage() {
       });
 
       if (signupError) {
+        // Handle common errors with friendly messages
         if (signupError.message.includes('rate limit')) {
           setError('Too many signup attempts. Please try again in an hour.');
+        } else if (
+          signupError.message.toLowerCase().includes('already registered') ||
+          signupError.message.toLowerCase().includes('already in use') ||
+          signupError.message.toLowerCase().includes('already exists')
+        ) {
+          setAccountExists(true);
         } else {
           setError(signupError.message);
         }
+        setLoading(false);
+        return;
+      }
+
+      // Supabase anti-enumeration: existing email returns fake success with empty identities[]
+      // This means the email is already registered — show friendly message instead
+      if (data?.user?.identities?.length === 0) {
+        setAccountExists(true);
         setLoading(false);
         return;
       }
@@ -263,6 +279,28 @@ export default function SignupPage() {
                 Start shopping with faster checkout and order tracking
               </p>
             </div>
+
+            {/* Account Already Exists Banner */}
+            {accountExists && (
+              <div className="mt-6 p-4 rounded-xl border border-amber-200 bg-amber-50 animate-in fade-in">
+                <div className="flex items-start gap-2.5 mb-3">
+                  <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={16} />
+                  <div>
+                    <p className="text-amber-800 text-xs font-[700]">Account Already Exists</p>
+                    <p className="text-amber-700 text-xs font-[500] mt-0.5">
+                      An account with <span className="font-bold">{email}</span> is already registered.
+                      You can log in with your password, or use Google / Facebook if you signed up that way.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href={`/login?message=You already have an account. Please log in.`}
+                  className="w-full h-[40px] rounded-[10px] bg-[#FF6A00] hover:bg-[#E85D00] text-white font-[600] text-[13px] flex items-center justify-center gap-2 transition-all"
+                >
+                  Go to Login →
+                </Link>
+              </div>
+            )}
 
             {/* Error Message Box */}
             {error && (

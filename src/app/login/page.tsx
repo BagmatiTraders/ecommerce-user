@@ -107,7 +107,20 @@ function LoginContent() {
       });
 
       if (loginError) {
-        setError(loginError.message);
+        // Specific friendly messages for common errors
+        if (
+          loginError.message.toLowerCase().includes('invalid login credentials') ||
+          loginError.message.toLowerCase().includes('invalid credentials') ||
+          loginError.message.toLowerCase().includes('wrong password')
+        ) {
+          setError(
+            'Wrong email or password. If you signed up using Google or Facebook, please use those buttons to sign in. To enable email login, click "Forgot Password" to set a password.'
+          );
+        } else if (loginError.message.toLowerCase().includes('email not confirmed')) {
+          setError('Please verify your email first. Check your inbox for a confirmation link from us.');
+        } else {
+          setError(loginError.message);
+        }
         setLoading(false);
         return;
       }
