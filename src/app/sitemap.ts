@@ -4,48 +4,48 @@ import { cookies } from 'next/headers';
 
 const slugify = (str: string) => str.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 
-// Static URLs — always use www.bagmati.shop consistently
+// Canonical base URL — always www
 const BASE_URL = 'https://www.bagmati.shop';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Static URLs (always included even if DB fails)
+  // ─── Static Public Pages ────────────────────────────────────────────────────
+  // Pages that should ALWAYS be indexed (never blocked by robots.txt)
   const staticUrls: MetadataRoute.Sitemap = [
-    {
-      url: BASE_URL,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1.0,
-    },
-    {
-      url: `${BASE_URL}/products`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.9,
-    },
-    {
-      url: `${BASE_URL}/flash-sales`,
-      lastModified: new Date(),
-      changeFrequency: 'hourly',
-      priority: 0.8,
-    },
+    // Core pages
+    { url: BASE_URL,                      lastModified: new Date(), changeFrequency: 'daily',   priority: 1.0 },
+    { url: `${BASE_URL}/products`,        lastModified: new Date(), changeFrequency: 'daily',   priority: 0.9 },
+    { url: `${BASE_URL}/flash-sales`,     lastModified: new Date(), changeFrequency: 'hourly',  priority: 0.8 },
+    { url: `${BASE_URL}/top-selling`,     lastModified: new Date(), changeFrequency: 'daily',   priority: 0.8 },
+    { url: `${BASE_URL}/search`,          lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.6 },
+    { url: `${BASE_URL}/vendor`,          lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${BASE_URL}/track`,           lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
+    // Policy / info pages
+    { url: `${BASE_URL}/privacy-policy`,  lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${BASE_URL}/shipping-policy`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${BASE_URL}/returns-refunds`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
   ];
 
   try {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
-    // Fetch active products
-    const { data: products, error } = await supabase
-      .from('ecommerce_products')
-      .select('slug, updated_at, brand')
-      .eq('status', 'active');
+    // ─── Fetch Products & Categories in parallel ─────────────────────────────
+    const [{ data: products, error: productError }, { data: categories }] = await Promise.all([
+      supabase
+        .from('ecommerce_products')
+        .select('slug, updated_at, brand')
+        .eq('status', 'active'),
+      supabase
+        .from('ecommerce_categories')
+        .select('id, name'),
+    ]);
 
-    if (error || !products) {
-      // If DB is unreachable, still return static URLs so sitemap doesn't break
+    if (productError || !products) {
+      // DB unreachable — still serve static URLs so sitemap never breaks
       return staticUrls;
     }
 
-    // Generate dynamic product URLs
+    // Dynamic product pages: /products/[slug]
     const productUrls: MetadataRoute.Sitemap = products.map((p) => ({
       url: `${BASE_URL}/products/${p.slug}`,
       lastModified: new Date(p.updated_at || Date.now()),
@@ -53,7 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-    // Generate dynamic brand URLs (unique brands only)
+    // Dynamic brand pages: /brand/[slug]
     const uniqueBrands = Array.from(
       new Set(
         products
@@ -61,7 +61,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           .filter((brand): brand is string => !!brand && brand !== 'No Brand')
       )
     );
-
     const brandUrls: MetadataRoute.Sitemap = uniqueBrands.map((brand) => ({
       url: `${BASE_URL}/brand/${slugify(brand)}`,
       lastModified: new Date(),
@@ -69,9 +68,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }));
 
-    return [...staticUrls, ...productUrls, ...brandUrls];
+    // Category filter pages: /products?category=[name]
+    // Each shows a different filtered product list — Google indexes these separately
+    const categoryUrls: MetadataRoute.Sitemap = (categories || []).map((cat) => ({
+      url: `${BASE_URL}/products?category=${encodeURIComponent(cat.name)}`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.7,
+    }));
+
+    return [
+      ...staticUrls,
+      ...productUrls,
+      ...brandUrls,
+      ...categoryUrls,
+    ];
   } catch {
-    // Fallback: return static URLs only
+    // Fallback: always return static URLs even if DB is down
     return staticUrls;
   }
 }
