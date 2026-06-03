@@ -206,7 +206,7 @@ function LoginContent() {
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}/auth/callback?next=/auth/update-password`,
+        redirectTo: `${window.location.origin}/auth/update-password`,
       });
 
       if (resetError) throw resetError;
