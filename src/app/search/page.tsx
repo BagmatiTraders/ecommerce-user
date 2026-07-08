@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { logSearch, logProductClick } from '@/lib/searchTracking';
+import { sendMetaCapiEvent } from '@/app/actions/metaCapi';
 import Header from '@/components/layout/Header';
 import { 
   Search as SearchIcon, 
@@ -98,6 +99,37 @@ function SearchResults() {
         logSearch(initialQuery, unique.length, userId).then(id => {
           lastSearchLogId.current = id;
         });
+
+        // Trigger Meta Pixel & CAPI Search (deduplicated)
+        const triggerMetaSearch = async () => {
+          const eventId = `search_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+          // 1. Meta Pixel Search event (client-side)
+          if (typeof window !== 'undefined' && (window as any).fbq) {
+            (window as any).fbq('track', 'Search', {
+              search_string: initialQuery,
+              content_category: category !== 'All' ? category : undefined
+            }, { eventID: eventId });
+          }
+
+          // 2. Server-side CAPI Search event
+          try {
+            await sendMetaCapiEvent({
+              eventName: 'Search',
+              eventId: eventId,
+              customData: {
+                search_string: initialQuery,
+                content_category: category !== 'All' ? category : undefined
+              },
+              userData: userId ? {
+                email: undefined
+              } : undefined
+            });
+          } catch (e) {
+            console.warn('Meta CAPI Search tracking error:', e);
+          }
+        };
+        triggerMetaSearch();
       }
     }
     setLoading(false);

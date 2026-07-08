@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Star, Heart, Eye, RefreshCw, ShoppingCart } from 'lucide-react';
 import { useCart } from '@/lib/store/useCart';
 import { supabase } from '@/lib/supabase';
+import { sendMetaCapiEvent } from '@/app/actions/metaCapi';
 
 interface ProductCardProps {
   product: {
@@ -189,10 +190,49 @@ export default function ProductCard({
 
     router.push('/checkout');
   };
-
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const eventId = `wishlist_${product.id}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const productPrice = product.special_price || product.regular_price;
+
+    // 1. Meta Pixel AddToWishlist event (client-side)
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('track', 'AddToWishlist', {
+        content_name: product.display_name,
+        content_ids: [product.id],
+        content_type: 'product',
+        value: productPrice,
+        currency: 'NPR'
+      }, { eventID: eventId });
+    }
+
+    // 2. Meta Conversions API AddToWishlist event (server-side)
+    const triggerWishlistCapi = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        await sendMetaCapiEvent({
+          eventName: 'AddToWishlist',
+          eventId: eventId,
+          customData: {
+            content_name: product.display_name,
+            content_ids: [product.id],
+            content_type: 'product',
+            value: productPrice,
+            currency: 'NPR'
+          },
+          userData: user ? {
+            email: user.email || undefined,
+            phone: user.phone || undefined
+          } : undefined
+        });
+      } catch (err) {
+        console.warn('Meta CAPI AddToWishlist tracking error:', err);
+      }
+    };
+    triggerWishlistCapi();
+
     alert(`Added "${product.display_name}" to Wishlist!`);
   };
 

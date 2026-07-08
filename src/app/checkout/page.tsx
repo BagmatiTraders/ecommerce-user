@@ -516,6 +516,45 @@ export default function CheckoutPage() {
         appliedVoucher
       }));
 
+      // Trigger Meta Pixel & CAPI AddPaymentInfo (deduplicated)
+      const triggerAddPaymentInfo = async () => {
+        const eventId = `payment_info_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const totalValue = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+        // 1. Client-side Pixel AddPaymentInfo
+        if (typeof window !== 'undefined' && (window as any).fbq) {
+          (window as any).fbq('track', 'AddPaymentInfo', {
+            content_ids: items.map(i => i.id),
+            content_type: 'product',
+            value: totalValue,
+            currency: 'NPR'
+          }, { eventID: eventId });
+        }
+
+        // 2. Server-side CAPI AddPaymentInfo
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          await sendMetaCapiEvent({
+            eventName: 'AddPaymentInfo',
+            eventId: eventId,
+            customData: {
+              content_ids: items.map(i => i.id),
+              content_type: 'product',
+              value: totalValue,
+              currency: 'NPR'
+            },
+            userData: {
+              email: formData.email || user?.email || undefined,
+              phone: formData.phone || user?.phone || undefined,
+              fullName: formData.fullName || undefined
+            }
+          });
+        } catch (e) {
+          console.warn('Meta CAPI AddPaymentInfo error:', e);
+        }
+      };
+      triggerAddPaymentInfo();
+
       // Redirect directly to the Choose Payment Method subpage
       router.push('/checkout/payment');
     } catch (error: any) {
