@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useCart } from '@/lib/store/useCart';
+import { trackEvent } from '@/utils/analytics';
+import { sendMetaCapiEvent } from '@/app/actions/metaCapi';
 import Header from '@/components/layout/Header';
 import ProductCard from '@/components/home/ProductCard';
 import { 
@@ -379,6 +381,60 @@ export default function ProductDetailPage({
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
   };
+
+  useEffect(() => {
+    if (!product) return;
+
+    const trackProductView = async () => {
+      // Generate a unique event ID for deduplication
+      const eventId = `view_${product.id}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      // 1. Database log
+      trackEvent('view_content', {
+        product_id: product.id,
+        product_name: product.display_name,
+        price: product.special_price || product.regular_price,
+        category: product.category || 'Product'
+      });
+
+      // 2. Client-side Meta Pixel ViewContent event
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'ViewContent', {
+          content_name: product.display_name,
+          content_category: product.category || 'Product',
+          content_ids: [product.id],
+          content_type: 'product',
+          value: product.special_price || product.regular_price,
+          currency: 'NPR'
+        }, { eventID: eventId });
+      }
+
+      // 3. Server-side Meta Conversions API (CAPI) ViewContent event
+      try {
+        await sendMetaCapiEvent({
+          eventName: 'ViewContent',
+          eventId: eventId,
+          eventSourceUrl: window.location.href,
+          customData: {
+            content_name: product.display_name,
+            content_category: product.category || 'Product',
+            content_ids: [product.id],
+            content_type: 'product',
+            value: product.special_price || product.regular_price,
+            currency: 'NPR'
+          },
+          userData: user ? {
+            email: user.email || undefined,
+            phone: user.phone || undefined
+          } : undefined
+        });
+      } catch (err) {
+        console.warn('Meta CAPI ViewContent tracking error:', err);
+      }
+    };
+
+    trackProductView();
+  }, [product, user]);
 
   const fetchProduct = async () => {
     setLoading(true);

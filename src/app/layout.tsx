@@ -85,10 +85,19 @@ export default function RootLayout({
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${process.env.NEXT_PUBLIC_META_PIXEL_ID || 'YOUR_PIXEL_ID_HERE'}');
+            fbq('init', '${process.env.NEXT_PUBLIC_META_PIXEL_ID || '2453397678476892'}');
             fbq('track', 'PageView');
           `}
         </Script>
+        <noscript>
+          <img
+            height="1"
+            width="1"
+            style={{ display: 'none' }}
+            src={`https://www.facebook.com/tr?id=${process.env.NEXT_PUBLIC_META_PIXEL_ID || '2453397678476892'}&ev=PageView&noscript=1`}
+            alt=""
+          />
+        </noscript>
 
         {/* Microsoft Clarity Code */}
         {process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID && (

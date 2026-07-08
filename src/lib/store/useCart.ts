@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { trackEvent } from '@/utils/analytics';
+import { sendMetaCapiEvent } from '@/app/actions/metaCapi';
 
 export interface CartItem {
   id: string;
@@ -31,7 +32,10 @@ export const useCart = create<CartStore>()(
     (set, get) => ({
       items: [],
       addItem: (item) => {
-        // Track add to cart event
+        // Generate unique event ID for deduplication
+        const eventId = `cart_${item.id}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+        // 1. Database log
         trackEvent('add_to_cart', {
           product_id: item.id,
           product_name: item.display_name,
@@ -39,6 +43,44 @@ export const useCart = create<CartStore>()(
           quantity: item.quantity,
           category: item.category || 'unknown'
         });
+
+        // 2. Client-side Meta Pixel AddToCart event
+        if (typeof window !== 'undefined' && (window as any).fbq) {
+          (window as any).fbq('track', 'AddToCart', {
+            content_name: item.display_name,
+            content_ids: [item.id],
+            content_type: 'product',
+            value: item.price * item.quantity,
+            currency: 'NPR'
+          }, { eventID: eventId });
+        }
+
+        // 3. Server-side Meta Conversions API (CAPI) AddToCart event
+        const fetchAndSendCapi = async () => {
+          try {
+            const { supabase } = await import('@/lib/supabase');
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            await sendMetaCapiEvent({
+              eventName: 'AddToCart',
+              eventId: eventId,
+              customData: {
+                content_name: item.display_name,
+                content_ids: [item.id],
+                content_type: 'product',
+                value: item.price * item.quantity,
+                currency: 'NPR'
+              },
+              userData: user ? {
+                email: user.email || undefined,
+                phone: user.phone || undefined
+              } : undefined
+            });
+          } catch (e) {
+            console.warn('Meta CAPI AddToCart tracking error:', e);
+          }
+        };
+        fetchAndSendCapi();
 
         const currentItems = get().items;
         const existingItem = currentItems.find((i) => i.id === item.id);

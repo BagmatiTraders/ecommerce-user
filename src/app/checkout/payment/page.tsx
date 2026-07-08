@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { getStoredAttribution, getFacebookCookies } from '@/utils/analytics';
+import { sendMetaCapiEvent } from '@/app/actions/metaCapi';
 
 interface PaymentMethod {
   id: string;
@@ -239,7 +240,7 @@ export default function ChoosePaymentPage() {
             });
           }
 
-          // Meta Pixel Purchase
+          // Meta Pixel Purchase (deduplicated via eventID)
           if ((window as any).fbq) {
             (window as any).fbq('track', 'Purchase', {
               value: grandTotal,
@@ -249,11 +250,32 @@ export default function ChoosePaymentPage() {
                 id: item.id,
                 quantity: item.quantity
               }))
-            });
+            }, { eventID: generatedOrderNumber });
           }
         }
+
+        // Trigger Meta Conversions API (CAPI) Purchase event (server-to-server)
+        await sendMetaCapiEvent({
+          eventName: 'Purchase',
+          eventId: generatedOrderNumber, // unique order ID used for deduplication matching
+          eventSourceUrl: window.location.href,
+          customData: {
+            value: grandTotal,
+            currency: 'NPR',
+            content_type: 'product',
+            contents: items.map(item => ({
+              id: item.id,
+              quantity: item.quantity
+            }))
+          },
+          userData: {
+            email: formData.email || undefined,
+            phone: formData.phone || undefined,
+            fullName: formData.fullName || undefined
+          }
+        });
       } catch (err) {
-        console.warn('Failed to fire ad tracking pixel events:', err);
+        console.warn('Failed to fire ad tracking pixel/CAPI purchase events:', err);
       }
 
       // Log purchases for search analytics (fire-and-forget)

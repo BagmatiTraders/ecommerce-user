@@ -16,6 +16,11 @@ function TrafficTrackerContent() {
     // Log the page view event in the database
     trackEvent('page_view');
 
+    // Log the page view to Meta Pixel for SPA route transitions
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('track', 'PageView');
+    }
+
     // Run guest-to-user session merge logic if user is authenticated
     const syncGuestSession = async () => {
       try {

@@ -6,6 +6,7 @@ import { useCart } from '@/lib/store/useCart';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { trackEvent } from '@/utils/analytics';
+import { sendMetaCapiEvent } from '@/app/actions/metaCapi';
 import { 
   ArrowLeft,
   ArrowRight,
@@ -188,6 +189,46 @@ export default function CheckoutPage() {
       validatePrices(supabase);
       if (items.length > 0) {
         trackEvent('checkout_start');
+
+        // Trigger Meta Pixel & CAPI InitiateCheckout
+        const triggerInitiateCheckout = async () => {
+          const eventId = `checkout_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          const totalValue = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+          // 1. Client-side Pixel InitiateCheckout
+          if (typeof window !== 'undefined' && (window as any).fbq) {
+            (window as any).fbq('track', 'InitiateCheckout', {
+              content_ids: items.map(i => i.id),
+              content_type: 'product',
+              value: totalValue,
+              currency: 'NPR',
+              num_items: items.reduce((sum, i) => sum + i.quantity, 0)
+            }, { eventID: eventId });
+          }
+
+          // 2. Server-side Conversions API InitiateCheckout
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            await sendMetaCapiEvent({
+              eventName: 'InitiateCheckout',
+              eventId: eventId,
+              customData: {
+                content_ids: items.map(i => i.id),
+                content_type: 'product',
+                value: totalValue,
+                currency: 'NPR',
+                num_items: items.reduce((sum, i) => sum + i.quantity, 0)
+              },
+              userData: user ? {
+                email: user.email || undefined,
+                phone: user.phone || undefined
+              } : undefined
+            });
+          } catch (err) {
+            console.warn('Meta CAPI InitiateCheckout tracking error:', err);
+          }
+        };
+        triggerInitiateCheckout();
       }
     }
   }, [items, isMounted]);
