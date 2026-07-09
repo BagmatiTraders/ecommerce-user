@@ -679,6 +679,50 @@ export default function ProductDetailPage({
   const handleWhatsappOrder = () => {
     if (!product) return;
     
+    // Trigger Meta Pixel & CAPI Contact event (WhatsApp Order Click)
+    const eventId = `whatsapp_${product.id}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const productPrice = product.special_price || product.regular_price;
+
+    // 1. Meta Pixel Contact (client-side)
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('track', 'Contact', {
+        content_name: product.display_name,
+        content_category: product.category || 'Product',
+        content_ids: [product.id],
+        content_type: 'product',
+        value: productPrice * displayQuantity,
+        currency: 'NPR',
+        contact_method: 'WhatsApp'
+      }, { eventID: eventId });
+    }
+
+    // 2. Meta Conversions API Contact (server-side)
+    const triggerContactCapi = async () => {
+      try {
+        await sendMetaCapiEvent({
+          eventName: 'Contact',
+          eventId: eventId,
+          eventSourceUrl: window.location.href,
+          customData: {
+            content_name: product.display_name,
+            content_category: product.category || 'Product',
+            content_ids: [product.id],
+            content_type: 'product',
+            value: productPrice * displayQuantity,
+            currency: 'NPR',
+            contact_method: 'WhatsApp'
+          },
+          userData: user ? {
+            email: user.email || undefined,
+            phone: user.phone || undefined
+          } : undefined
+        });
+      } catch (err) {
+        console.warn('Meta CAPI Contact tracking error:', err);
+      }
+    };
+    triggerContactCapi();
+
     const productName = product.display_name + (selectedVariation ? ` (${selectedVariation.name}: ${selectedVariation.value})` : '');
     const productId = product.id.slice(0, 8).toUpperCase();
     const productUrl = `${window.location.origin}/products/${product.slug}`;
