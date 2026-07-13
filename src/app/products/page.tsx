@@ -4,13 +4,28 @@ import { cookies } from 'next/headers';
 import ProductsClient from './ProductsClient';
 
 export const metadata: Metadata = {
-  title: 'All Products | Bagmati Shop',
-  description: 'Browse our collection of premium gadgets, fashion, and home essentials. Find high-quality items with fast delivery and great customer support.',
+  title: 'Buy Products Online at Best Price in Nepal | Bagmati Shop',
+  description: 'Shop online in Nepal at best prices. Browse premium gadgets, electronics, fashion, and home essentials with fast delivery and cash on delivery across Nepal. Bagmati Shop — your trusted online store in Nepal.',
+  keywords: [
+    'online shopping Nepal',
+    'buy products online Nepal',
+    'online store Nepal',
+    'best price Nepal',
+    'cash on delivery Nepal',
+    'fast delivery Nepal',
+    'electronics Nepal',
+    'gadgets Nepal',
+    'bagmati shop',
+  ],
+  alternates: {
+    canonical: 'https://www.bagmati.shop/products',
+  },
   openGraph: {
-    title: 'All Products | Bagmati Shop',
-    description: 'Browse our collection of premium gadgets, fashion, and home essentials. Find high-quality items with fast delivery and great customer support.',
-    url: 'https://bagmati.shop/products',
+    title: 'Buy Products Online at Best Price in Nepal | Bagmati Shop',
+    description: 'Shop online in Nepal at best prices. Fast delivery with cash on delivery across Nepal.',
+    url: 'https://www.bagmati.shop/products',
     type: 'website',
+    siteName: 'Bagmati Shop',
   },
 };
 

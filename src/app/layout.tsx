@@ -10,11 +10,24 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Bagmati Shop | Premium Online Store",
+    default: "Bagmati Shop | Online Shopping at Best Price in Nepal",
     template: "%s | Bagmati Shop"
   },
-  description: "Shop the latest premium gadgets, fashion, and home essentials at Bagmati Shop. Experience seamless shopping with fast delivery, secure guest checkout, and 24/7 real-time support.",
-  keywords: ["Bagmati Shop", "online shopping Nepal", "premium gadgets", "online shopping", "electronics", "fashion", "home essentials", "fast delivery", "secure payments"],
+  description: "Shop online at Bagmati Shop — Nepal's trusted online store. Buy gadgets, electronics, fashion, and home essentials at best price with fast delivery and cash on delivery across Nepal.",
+  keywords: [
+    "online shopping Nepal",
+    "buy online Nepal",
+    "online store Nepal",
+    "ecommerce Nepal",
+    "best price Nepal",
+    "cash on delivery Nepal",
+    "Bagmati Shop",
+    "Bagmati Traders",
+    "electronics Nepal",
+    "gadgets Nepal",
+    "fast delivery Nepal",
+    "online shopping Kathmandu",
+  ],
   authors: [{ name: "Bagmati Traders" }],
   creator: "Bagmati Shop Team",
   publisher: "Bagmati Traders",
@@ -23,8 +36,8 @@ export const metadata: Metadata = {
     canonical: "https://www.bagmati.shop",
   },
   openGraph: {
-    title: "Bagmati Shop | Elevate Your Lifestyle",
-    description: "Discover a curated collection of high-end products at Bagmati Shop. Experience the next generation of online shopping.",
+    title: "Bagmati Shop | Online Shopping at Best Price in Nepal",
+    description: "Nepal's trusted online store. Buy gadgets, electronics, fashion, and home essentials at best price with fast delivery and cash on delivery.",
     type: "website",
     locale: "en_US",
     siteName: "Bagmati Shop",
@@ -32,8 +45,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bagmati Shop | Premium Shopping",
-    description: "Shop premium. Shop fast. Shop secure.",
+    title: "Bagmati Shop | Online Shopping in Nepal",
+    description: "Best price. Fast delivery. Cash on delivery across Nepal.",
     creator: "@bagmatishop",
   },
   icons: {
@@ -58,7 +71,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
-        {/* Google Analytics (gtag.js) */}
+              {/* Google Analytics (gtag.js) */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-Q637T9HD97"
           strategy="afterInteractive"
@@ -111,6 +124,56 @@ export default function RootLayout({
             `}
           </Script>
         )}
+
+        {/* WebSite Schema — enables Google Sitelinks Search Box */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              'name': 'Bagmati Shop',
+              'alternateName': 'Bagmati Traders Online Store',
+              'url': 'https://www.bagmati.shop',
+              'potentialAction': {
+                '@type': 'SearchAction',
+                'target': {
+                  '@type': 'EntryPoint',
+                  'urlTemplate': 'https://www.bagmati.shop/search?q={search_term_string}',
+                },
+                'query-input': 'required name=search_term_string',
+              },
+            }),
+          }}
+        />
+
+        {/* Organization Schema — helps Google show your business in Knowledge Panel */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              'name': 'Bagmati Shop',
+              'alternateName': 'Bagmati Traders',
+              'url': 'https://www.bagmati.shop',
+              'logo': 'https://www.bagmati.shop/icon.png',
+              'contactPoint': {
+                '@type': 'ContactPoint',
+                'contactType': 'customer service',
+                'areaServed': 'NP',
+                'availableLanguage': ['English', 'Nepali'],
+              },
+              'areaServed': {
+                '@type': 'Country',
+                'name': 'Nepal',
+              },
+              'sameAs': [
+                'https://www.facebook.com/bagmatishop',
+              ],
+            }),
+          }}
+        />
       </head>
       <body style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <TrafficTracker />

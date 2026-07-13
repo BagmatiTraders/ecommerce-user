@@ -27,17 +27,41 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   }
 
-  const title = `${product.display_name} | Bagmati Shop`;
-  const description = product.description?.slice(0, 160) || `Buy ${product.display_name} online at Bagmati Shop. Premium quality and fast delivery.`;
-  const imageUrl = product.images?.[0] || '/logo.png';
+  // SEO-optimised title — matches how people search on Google Nepal
+  const title = `Buy ${product.display_name} Online at Best Price in Nepal | Bagmati Shop`;
+
+  // Rich description with Nepal-specific keywords
+  const brandPart = product.brand && product.brand !== 'No Brand' ? `Genuine ${product.brand} product. ` : '';
+  const catPart   = product.category ? `Shop ${product.category} at Bagmati Shop. ` : '';
+  const fallback  = `${brandPart}${catPart}Fast delivery across Nepal. Cash on delivery available.`;
+  const rawDesc   = product.description?.replace(/<[^>]+>/g, '').trim();
+  const description = rawDesc && rawDesc.length > 40
+    ? `${rawDesc.slice(0, 120)} — Buy online at best price in Nepal with fast delivery.`
+    : fallback;
+
+  const imageUrl = product.images?.[0] || 'https://www.bagmati.shop/logo.png';
 
   return {
     title,
     description,
+    keywords: [
+      product.display_name,
+      `buy ${product.display_name} nepal`,
+      `${product.display_name} price in nepal`,
+      `${product.display_name} online nepal`,
+      product.brand && product.brand !== 'No Brand' ? product.brand : '',
+      product.category || '',
+      'online shopping nepal',
+      'cash on delivery nepal',
+      'bagmati shop',
+    ].filter(Boolean),
+    alternates: {
+      canonical: `https://www.bagmati.shop/products/${slug}`,
+    },
     openGraph: {
       title,
       description,
-      url: `https://bagmati.shop/products/${slug}`,
+      url: `https://www.bagmati.shop/products/${slug}`,
       siteName: 'Bagmati Shop',
       images: [
         {
@@ -47,7 +71,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           alt: product.display_name,
         },
       ],
-      type: 'article',
+      type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
@@ -137,7 +161,7 @@ export default async function ProductDetailPage({ params }: Props) {
     '@type': 'Product',
     'name': product.display_name,
     'image': product.images || [],
-    'description': product.description || `Buy ${product.display_name} at Bagmati Shop.`,
+    'description': product.description || `Buy ${product.display_name} online at best price in Nepal at Bagmati Shop. Fast delivery with cash on delivery available.`,
     'sku': product.id,
     'mpn': product.inventory_id || product.id,
     'brand': {
@@ -146,28 +170,55 @@ export default async function ProductDetailPage({ params }: Props) {
     },
     'offers': {
       '@type': 'Offer',
-      'url': `https://bagmati.shop/products/${product.slug}`,
-      'priceCurrency': currency === 'Rs' ? 'NPR' : currency,
+      'url': `https://www.bagmati.shop/products/${product.slug}`,
+      'priceCurrency': 'NPR',
       'price': currentPrice,
       'priceValidUntil': '2035-01-01',
       'itemCondition': 'https://schema.org/NewCondition',
       'availability': product.stock_quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      'seller': {
+        '@type': 'Organization',
+        'name': storeName,
+        'url': 'https://www.bagmati.shop',
+      },
+      'areaServed': {
+        '@type': 'Country',
+        'name': 'Nepal',
+      },
     },
     'aggregateRating': product.reviews_count > 0 ? {
       '@type': 'AggregateRating',
       'ratingValue': product.rating || 5,
       'reviewCount': product.reviews_count,
+      'bestRating': 5,
+      'worstRating': 1,
     } : undefined,
+  };
+
+  // BreadcrumbList schema — Google shows: bagmati.shop › Products › Product Name
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': [
+      { '@type': 'ListItem', 'position': 1, 'name': 'Home',     'item': 'https://www.bagmati.shop' },
+      { '@type': 'ListItem', 'position': 2, 'name': 'Products', 'item': 'https://www.bagmati.shop/products' },
+      { '@type': 'ListItem', 'position': 3, 'name': product.display_name, 'item': `https://www.bagmati.shop/products/${product.slug}` },
+    ],
   };
 
   return (
     <>
-      {/* Insert JSON-LD Structured Data in document head for Google Rich Snippets */}
+      {/* Product JSON-LD — enables Google Rich Snippets (price, rating, availability) */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      
+      {/* BreadcrumbList JSON-LD — shows navigation path in Google results */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
+
       {/* Render the Client UI with pre-fetched data props */}
       <ProductClient
         initialProduct={product}

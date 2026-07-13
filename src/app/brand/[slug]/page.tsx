@@ -42,17 +42,30 @@ const getBrandDetails = async (slug: string) => {
 // 1. Dynamic SEO Metadata Generation
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const { brandName } = await getBrandDetails(slug);
-  const title = `Shop ${brandName} Products | Bagmati Shop`;
-  const description = `Discover premium products from ${brandName} available at Bagmati Shop. Shop the latest ${brandName} collection with fast delivery.`;
+  const { brandName, products } = await getBrandDetails(slug);
+  const count = products.length;
+
+  const title = `Buy ${brandName} Products Online at Best Price in Nepal | Bagmati Shop`;
+  const description = `Shop ${count > 0 ? count + ' genuine' : 'genuine'} ${brandName} products in Nepal at the best price. Fast delivery across Nepal with cash on delivery available at Bagmati Shop.`;
 
   return {
     title,
     description,
+    keywords: [
+      brandName,
+      `buy ${brandName} nepal`,
+      `${brandName} price in nepal`,
+      `${brandName} products online`,
+      'online shopping nepal',
+      'bagmati shop',
+    ],
+    alternates: {
+      canonical: `https://www.bagmati.shop/brand/${slug}`,
+    },
     openGraph: {
       title,
       description,
-      url: `https://bagmati.shop/brand/${slug}`,
+      url: `https://www.bagmati.shop/brand/${slug}`,
       type: 'website',
     },
   };
@@ -86,10 +99,26 @@ export default async function BrandStorePage({ params }: Props) {
   // Sort by sales popularity
   products.sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0));
 
+  // BreadcrumbList JSON-LD
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': [
+      { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': 'https://www.bagmati.shop' },
+      { '@type': 'ListItem', 'position': 2, 'name': `${brandName} Store`, 'item': `https://www.bagmati.shop/brand/${slug}` },
+    ],
+  };
+
   return (
-    <BrandClient 
-      initialProducts={products}
-      initialBrandName={brandName}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
+      <BrandClient 
+        initialProducts={products}
+        initialBrandName={brandName}
+      />
+    </>
   );
 }

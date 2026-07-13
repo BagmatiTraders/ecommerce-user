@@ -31,15 +31,17 @@ const SearchableSelect = ({
   placeholder, 
   label, 
   disabled = false,
-  required = false
+  required = false,
+  triggerLabel
 }: { 
-  options: { id: string | number, name: string }[], 
+  options: { id: string | number, name: string, triggerLabel?: string }[], 
   value: string | number, 
   onChange: (val: string) => void, 
   placeholder: string,
   label: string,
   disabled?: boolean,
-  required?: boolean
+  required?: boolean,
+  triggerLabel?: (opt: { id: string | number, name: string }) => string
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -50,6 +52,11 @@ const SearchableSelect = ({
   );
 
   const selectedOption = options.find(opt => String(opt.id) === String(value));
+
+  // What to show in the closed trigger box (short label if provided, else full name)
+  const displayInTrigger = selectedOption
+    ? (triggerLabel ? triggerLabel(selectedOption) : selectedOption.name)
+    : placeholder;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -66,7 +73,7 @@ const SearchableSelect = ({
       <label className="block text-[14px] font-[500] text-[#374151] mb-[8px] select-none">{label} {required && '*'}</label>
       <div 
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center cursor-pointer transition-all duration-200"
+        className="w-full cursor-pointer transition-all duration-200"
         style={{
           height: '52px',
           borderRadius: '14px',
@@ -75,13 +82,26 @@ const SearchableSelect = ({
           fontSize: '15px',
           background: 'white',
           opacity: disabled ? 0.6 : 1,
-          pointerEvents: disabled ? 'none' : 'auto'
+          pointerEvents: disabled ? 'none' : 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          overflow: 'hidden'
         }}
       >
-        <span className={selectedOption ? 'text-[#111827] font-[500]' : 'text-gray-400'}>
-          {selectedOption ? selectedOption.name : placeholder}
+        <span 
+          className={selectedOption ? 'text-[#111827] font-[500]' : 'text-gray-400'}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+            display: 'block'
+          }}
+        >
+          {displayInTrigger}
         </span>
-        <Search size={16} className="text-gray-400 shrink-0 ml-2" />
+        <Search size={16} className="text-gray-400 flex-shrink-0 ml-2" />
       </div>
 
       {isOpen && !disabled && (
@@ -97,7 +117,7 @@ const SearchableSelect = ({
               onClick={(e) => e.stopPropagation()}
             />
           </div>
-          <div className="max-h-[200px] overflow-y-auto">
+          <div className="max-h-[220px] overflow-y-auto">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => (
                 <div 
@@ -107,12 +127,12 @@ const SearchableSelect = ({
                     setIsOpen(false);
                     setSearch('');
                   }}
-                  className={`px-4 py-3 hover:bg-orange-50 cursor-pointer transition-colors flex items-center justify-between group ${String(opt.id) === String(value) ? 'bg-orange-50/50' : ''}`}
+                  className={`px-4 py-3 hover:bg-orange-50 cursor-pointer transition-colors flex items-start justify-between group ${String(opt.id) === String(value) ? 'bg-orange-50/50' : ''}`}
                 >
-                  <span className={`text-[14px] font-[500] ${String(opt.id) === String(value) ? 'text-[#FF6A00]' : 'text-[#374151]'}`}>
+                  <span className={`text-[14px] font-[500] flex-1 mr-3 whitespace-normal break-words leading-snug ${String(opt.id) === String(value) ? 'text-[#FF6A00]' : 'text-[#374151]'}`}>
                     {opt.name}
                   </span>
-                  {String(opt.id) === String(value) && <Check size={14} className="text-[#FF6A00] stroke-[3]" />}
+                  {String(opt.id) === String(value) && <Check size={14} className="text-[#FF6A00] stroke-[3] shrink-0 mt-0.5" />}
                 </div>
               ))
             ) : (
@@ -463,13 +483,51 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (selectedLoc.province && selectedLoc.district && selectedLoc.city) {
-      const match = allLocations.find(l => 
+      // Find all matches for this city (case-insensitive)
+      const cityMatches = allLocations.filter(l => 
         l.province.trim().toLowerCase() === selectedLoc.province.toLowerCase() && 
         l.district.trim().toLowerCase() === selectedLoc.district.toLowerCase() && 
-        l.city.trim().toLowerCase() === selectedLoc.city.toLowerCase() && 
-        (selectedLoc.area ? l.area?.trim().toLowerCase() === selectedLoc.area.toLowerCase() : (!l.area || l.area.trim() === ''))
+        l.city.trim().toLowerCase() === selectedLoc.city.toLowerCase()
       );
-      setActiveRoute(match || null);
+
+      let match: DeliveryLocation | null = null;
+
+      if (cityMatches.length > 0) {
+        // Find the match with the highest delivery charge in this city
+        const highestChargeMatch = cityMatches.reduce((max, item) => 
+          item.delivery_charge > max.delivery_charge ? item : max, 
+          cityMatches[0]
+        );
+
+        const hasMultipleEntries = cityMatches.length > 1;
+
+        if (selectedLoc.area && selectedLoc.area !== 'None of Above' && selectedLoc.area !== 'None of Above / Different Address') {
+          // Find the exact match for this area
+          const areaMatch = cityMatches.find(l => 
+            l.area?.trim().toLowerCase() === selectedLoc.area.toLowerCase()
+          );
+
+          if (areaMatch) {
+            if (hasMultipleEntries) {
+              // If city name has multiple entries, use the high shipping fee amount
+              match = {
+                ...areaMatch,
+                delivery_charge: highestChargeMatch.delivery_charge
+              };
+            } else {
+              match = areaMatch;
+            }
+          } else {
+            // Fall back to highest charge match if no specific area match
+            match = highestChargeMatch;
+          }
+        } else {
+          // If "None of Above", "None of Above / Different Address", or area not selected yet
+          match = highestChargeMatch;
+        }
+      }
+
+      setActiveRoute(match);
     } else {
       setActiveRoute(null);
     }
@@ -497,6 +555,11 @@ export default function CheckoutPage() {
 
     if (cityHasAreas && !selectedLoc.area) {
       alert("Please select an Area / Neighborhood.");
+      return;
+    }
+
+    if ((selectedLoc.area === 'None of Above' || selectedLoc.area === 'None of Above / Different Address') && !formData.deliveryAddress.trim()) {
+      alert("Since you selected '" + selectedLoc.area + "', please enter your exact Detailed Address (House No, Street, Landmark) so we can locate you.");
       return;
     }
 
@@ -955,26 +1018,29 @@ export default function CheckoutPage() {
                       required
                     />
                     
-                    {areas.length > 0 ? (
-                      <SearchableSelect 
-                        label="Area / Neighborhood"
-                        placeholder="Select Area"
-                        options={areas}
-                        value={selectedLoc.area}
-                        onChange={(val) => {
-                          setSelectedLoc({ ...selectedLoc, area: val });
-                          setActiveAddressId(null);
-                        }}
-                        required
-                      />
-                    ) : (
-                      <div className="text-left flex flex-col justify-end">
-                        <label className="block text-[14px] font-[500] text-[#374151] mb-[8px] select-none">Area / Neighborhood</label>
-                        <div className="w-full h-[52px] bg-gray-50 rounded-[14px] flex items-center px-4 text-xs font-[500] text-gray-400 border border-dashed border-gray-200">
-                          No specific areas covered for this city
-                        </div>
-                      </div>
-                    )}
+                    <SearchableSelect 
+                      label="Area / Neighborhood"
+                      placeholder="Select Area"
+                      disabled={!selectedLoc.city}
+                      options={[
+                        ...areas,
+                        { id: 'None of Above / Different Address', name: '📍 None of Above / Different Address' }
+                      ]}
+                      value={selectedLoc.area}
+                      onChange={(val) => {
+                        setSelectedLoc({ ...selectedLoc, area: val });
+                        setActiveAddressId(null);
+                      }}
+                      required
+                      triggerLabel={(opt) => {
+                        // For areas with long comma-separated names, show only the first part
+                        const name = opt.name.replace(/^📍 /, '');
+                        if (name === 'None of Above / Different Address') return '📍 Different Address';
+                        const parts = name.split(',');
+                        if (parts.length > 2) return parts.slice(0, 2).join(',').trim() + '...';
+                        return name;
+                      }}
+                    />
                   </div>
 
                   {/* Active Route Delivery Badge */}
@@ -1008,9 +1074,11 @@ export default function CheckoutPage() {
 
                   {/* Row 6: Detailed Address Textarea */}
                   <div className="text-left">
-                    <label className="block text-[14px] font-[500] text-[#374151] mb-[8px]">Detailed Address (House No, Street, Landmark)</label>
+                    <label className="block text-[14px] font-[500] text-[#374151] mb-[8px]">
+                      Detailed Address (House No, Street, Landmark) {selectedLoc.area === 'None of Above / Different Address' && <span className="text-red-500">*</span>}
+                    </label>
                     <textarea 
-                      required 
+                      required={selectedLoc.area === 'None of Above / Different Address'} 
                       rows={3} 
                       placeholder="Enter your exact detailed address"
                       className="w-full px-[16px] py-[14px] rounded-[16px] border border-[#E5E7EB] text-[15px] font-[500] text-[#111827] bg-white outline-none focus:border-[#FF6A00] focus:ring-4 focus:ring-[#FF6A00]/12 transition-all duration-200 resize-none"
