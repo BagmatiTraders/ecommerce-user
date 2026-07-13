@@ -94,8 +94,11 @@ export default function ProductDetailPage({
     initialProduct?.video_url ? 'video' : 0
   );
   const [selectedVariation, setSelectedVariation] = useState<any>(
-    initialProduct?.variations && initialProduct.variations.length === 1 ? initialProduct.variations[0] : null
+    initialProduct?.variations && initialProduct.variations.length > 0 ? initialProduct.variations[0] : null
   );
+  const [showVariationPopup, setShowVariationPopup] = useState(false);
+  const [popupAction, setPopupAction] = useState<'cart' | 'buynow' | null>(null);
+  const [tempSelectedVariation, setTempSelectedVariation] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -456,8 +459,8 @@ export default function ProductDetailPage({
       setSelectedMedia(0);
     }
 
-    // Auto-select if only one variation exists
-    if (data.variations && data.variations.length === 1) {
+    // Auto-select first variation by default
+    if (data.variations && data.variations.length > 0) {
       setSelectedVariation(data.variations[0]);
     }
 
@@ -527,23 +530,23 @@ export default function ProductDetailPage({
     );
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (variation = selectedVariation) => {
     if (!product) return;
     
-    if (product.variations && product.variations.length > 0 && !selectedVariation) {
+    if (product.variations && product.variations.length > 0 && !variation) {
       alert(`Please select an option before adding to cart.`);
       return;
     }
 
-    const variationName = selectedVariation ? `${selectedVariation.name}: ${selectedVariation.value}` : '';
+    const variationName = variation ? `${variation.name}: ${variation.value}` : '';
     const activeFlashSale = flashSales.find(fs => fs.sold_qty < fs.total_stock && (!fs.variation_name || fs.variation_name === variationName));
     
-    let finalPrice = selectedVariation ? (selectedVariation.special_price || selectedVariation.price) : (product.special_price || product.regular_price);
+    let finalPrice = variation ? (variation.special_price || variation.price) : (product.special_price || product.regular_price);
     if (activeFlashSale) {
       finalPrice = activeFlashSale.flash_price;
     }
     
-    const finalInventoryId = selectedVariation?.inventory_id || product.inventory_id;
+    const finalInventoryId = variation?.inventory_id || product.inventory_id;
     const maxItemQuantity = activeFlashSale ? Math.min(5, activeFlashSale.total_stock - activeFlashSale.sold_qty) : (product ? Math.min(5, product.stock_quantity) : 5);
     
     const expiryTime = activeFlashSale 
@@ -604,13 +607,35 @@ export default function ProductDetailPage({
     setTimeout(() => setAddedToCart(false), 3000);
   };
 
-  const handleBuyNow = () => {
-    if (product?.variations && product.variations.length > 0 && !selectedVariation) {
+  const handleBuyNow = (variation = selectedVariation) => {
+    if (product?.variations && product.variations.length > 0 && !variation) {
       alert(`Please select an option before buying.`);
       return;
     }
-    handleAddToCart();
+    handleAddToCart(variation);
     router.push('/checkout');
+  };
+
+  const onAddToCartClick = () => {
+    if (!product) return;
+    if (isMobile && product.variations && product.variations.length > 0) {
+      setPopupAction('cart');
+      setTempSelectedVariation(selectedVariation || product.variations[0]);
+      setShowVariationPopup(true);
+    } else {
+      handleAddToCart(selectedVariation);
+    }
+  };
+
+  const onBuyNowClick = () => {
+    if (!product) return;
+    if (isMobile && product.variations && product.variations.length > 0) {
+      setPopupAction('buynow');
+      setTempSelectedVariation(selectedVariation || product.variations[0]);
+      setShowVariationPopup(true);
+    } else {
+      handleBuyNow(selectedVariation);
+    }
   };
 
   if (loading) return (
@@ -1098,7 +1123,7 @@ export default function ProductDetailPage({
               */}
               <div className="flex items-center gap-3 mt-2 w-full">
                 <button 
-                  onClick={handleAddToCart}
+                  onClick={onAddToCartClick}
                   disabled={addedToCart}
                   className="flex-1 h-[46px] md:h-[54px] rounded-[12px] md:rounded-[14px] bg-white border-[1.5px] border-[#FF6A00] text-[#FF6A00] text-[14px] md:text-[15px] font-[600] transition-colors duration-200 hover:bg-[#FFF3E6] flex items-center justify-center gap-2 cursor-pointer"
                 >
@@ -1107,7 +1132,7 @@ export default function ProductDetailPage({
                 </button>
                 
                 <button 
-                  onClick={handleBuyNow}
+                  onClick={onBuyNowClick}
                   className="flex-1 h-[46px] md:h-[54px] rounded-[12px] md:rounded-[14px] bg-[#FFA41C] border border-[#FF8F00] text-[#111111] text-[14px] md:text-[15px] font-[700] transition-colors duration-200 hover:bg-[#FA8900] flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#FFA41C]/10"
                 >
                   <span>Buy Now</span>
@@ -1470,7 +1495,7 @@ export default function ProductDetailPage({
             <span className="text-[10px] font-semibold whitespace-nowrap">Order on WhatsApp</span>
           </button>
           <button 
-            onClick={handleBuyNow}
+            onClick={onBuyNowClick}
             className="flex-1 h-[42px] rounded-[12px] bg-[#FFA41C] border border-[#FF8F00] text-[#111111] flex items-center justify-center hover:bg-[#FA8900] transition-colors shadow-sm shadow-[#FFA41C]/10 cursor-pointer"
             style={{ fontFamily: "'Inter', sans-serif" }}
           >
@@ -1478,6 +1503,106 @@ export default function ProductDetailPage({
           </button>
         </div>
       </div>
+
+      {/* Dynamic Mobile Bottom Sheet Variation Popup */}
+      {showVariationPopup && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-end justify-center md:hidden"
+          onClick={() => setShowVariationPopup(false)}
+        >
+          <div 
+            className="w-full bg-white rounded-t-[28px] p-6 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom duration-300 flex flex-col gap-5 text-left pb-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag handle bar */}
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto -mt-2 mb-1" />
+            
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-[800] text-gray-900 leading-none">Select Variation</h3>
+                <p className="text-[11px] font-semibold text-gray-400 mt-2 line-clamp-1">{product?.display_name}</p>
+              </div>
+              <button 
+                onClick={() => setShowVariationPopup(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:scale-95 transition-all cursor-pointer font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Variations list */}
+            <div className="flex flex-col gap-3 my-2">
+              {product?.variations?.map((v: any, idx: number) => {
+                const isSelected = tempSelectedVariation?.id === v.id || tempSelectedVariation?.value === v.value;
+                const vVariationName = `${v.name}: ${v.value}`;
+                const isFlashSale = flashSales.find(fs => fs.sold_qty < fs.total_stock && (!fs.variation_name || fs.variation_name === vVariationName));
+                
+                let vPrice = v.special_price || v.price;
+                let vOldPrice = v.special_price ? v.price : null;
+                if (isFlashSale) {
+                  vOldPrice = vPrice;
+                  vPrice = isFlashSale.flash_price;
+                }
+
+                return (
+                  <div 
+                    key={v.id || idx}
+                    onClick={() => {
+                      setTempSelectedVariation(v);
+                      setSelectedVariation(v); // Sync with main page state so price updates there too
+                    }}
+                    className={`p-4 rounded-2xl border-2 flex items-center justify-between cursor-pointer transition-all duration-200 ${
+                      isSelected 
+                        ? 'border-[#FF6A00] bg-orange-50/40 shadow-xs' 
+                        : 'border-gray-100 hover:border-gray-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex flex-col gap-1.5">
+                      <span className={`text-[14px] font-bold ${isSelected ? 'text-[#EA580C]' : 'text-gray-800'}`}>
+                        {v.value || v.name}
+                      </span>
+                      {isFlashSale && (
+                        <span className="inline-flex items-center gap-0.5 bg-gradient-to-r from-[#FF416C] to-[#FF4B2B] text-white text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full w-max animate-pulse">
+                          🔥 Flash Sale
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col items-end leading-none">
+                      <div className="flex items-baseline leading-none gap-0.5">
+                        <span className="text-[10px] font-bold text-gray-500">Rs.</span>
+                        <span className="text-[16px] font-extrabold text-gray-900">{vPrice}</span>
+                      </div>
+                      {vOldPrice && (
+                        <span className="text-[10px] text-gray-400 line-through mt-1.5">Rs {vOldPrice}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Confirm button */}
+            <button
+              onClick={() => {
+                if (!tempSelectedVariation) {
+                  alert('Please select a variation first');
+                  return;
+                }
+                setShowVariationPopup(false);
+                if (popupAction === 'cart') {
+                  handleAddToCart(tempSelectedVariation);
+                } else if (popupAction === 'buynow') {
+                  handleBuyNow(tempSelectedVariation);
+                }
+              }}
+              className="w-full h-[48px] rounded-xl bg-[#FFA41C] border border-[#FF8F00] text-[#111111] font-bold text-[14px] flex items-center justify-center transition-colors hover:bg-[#FA8900] active:scale-[0.98] shadow-md shadow-[#FFA41C]/10 cursor-pointer"
+            >
+              {popupAction === 'cart' ? 'Confirm Add to Cart' : 'Confirm Buy Now'}
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

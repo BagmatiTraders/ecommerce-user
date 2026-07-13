@@ -1157,6 +1157,11 @@ export default function CheckoutPage() {
                       >
                         {item.display_name}
                       </h4>
+                      {item.selected_variation && (
+                        <div className="text-[11px] text-[#FF6A00] font-semibold mt-1">
+                          Variation : {item.selected_variation}
+                        </div>
+                      )}
                       <div className="text-[12px] text-[#6B7280] font-medium mt-1">
                         Qty {item.quantity} × Rs. {item.price}
                       </div>

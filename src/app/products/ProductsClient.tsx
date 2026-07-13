@@ -228,8 +228,8 @@ export default function ProductsClient({
         {/* Sidebar + Main Grid Container */}
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           
-          {/* Sidebar Filters - Width 280px */}
-          <aside className="w-full lg:w-[280px] shrink-0 space-y-6">
+          {/* Sidebar Filters - Width 280px — Hidden on mobile to immediately show products at the top */}
+          <aside className="hidden lg:block w-full lg:w-[280px] shrink-0 space-y-6">
             
             {/* Filter Card Style: background white, radius 18px, padding 20px, border */}
             <div className="bg-white border border-[#E5E7EB] rounded-[18px] p-[20px] shadow-sm shadow-black/5 space-y-6">

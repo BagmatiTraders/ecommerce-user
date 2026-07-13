@@ -274,7 +274,7 @@ export default function CartPage() {
                         {item.selected_variation && (
                           <>
                             <span className="text-gray-300">|</span>
-                            <span className="text-[#FF6A00] font-medium">{item.selected_variation}</span>
+                            <span className="text-[#FF6A00] font-medium">Variation : {item.selected_variation}</span>
                           </>
                         )}
                       </div>

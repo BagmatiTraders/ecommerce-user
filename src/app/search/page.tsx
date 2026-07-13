@@ -138,8 +138,8 @@ function SearchResults() {
   return (
     <div className="container">
       <div className="flex flex-col lg:flex-row gap-12">
-        {/* Sidebar Filters */}
-        <aside className="w-full lg:w-72 space-y-6 shrink-0">
+        {/* Sidebar Filters — Hidden on mobile to immediately show matches at the top */}
+        <aside className="hidden lg:block w-full lg:w-72 space-y-6 shrink-0">
           <div>
             <h3 className="text-sm font-extrabold uppercase tracking-widest mb-3 flex items-center gap-2">
               <Filter size={16} /> Categories
