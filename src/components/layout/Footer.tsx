@@ -4,14 +4,14 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
-import { 
-  MessageCircle, 
-  Camera, 
-  Send, 
-  Video, 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  MessageCircle,
+  Camera,
+  Send,
+  Video,
+  Mail,
+  Phone,
+  MapPin,
   ArrowRight,
   ShieldCheck,
   Truck,
@@ -25,7 +25,7 @@ const Footer = () => {
   // Contact settings state
   const [storeName, setStoreName] = useState('Bagmati Traders');
   const [contactEmail, setContactEmail] = useState('contact@bagmatitraders.com');
-  const [contactPhone, setContactPhone] = useState('+977-98490808042');
+  const [contactPhone, setContactPhone] = useState('+977-9849080842');
   const [contactAddress, setContactAddress] = useState('Kathmandu, Balaju');
 
   // Shop Categories state (Top 5 categories by product count)
@@ -61,7 +61,7 @@ const Footer = () => {
         const { data: catData } = await supabase
           .from('ecommerce_categories')
           .select('*');
-          
+
         const { data: prodData } = await supabase
           .from('ecommerce_products')
           .select('category')
@@ -115,7 +115,7 @@ const Footer = () => {
       <div className="container mx-auto px-6">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 mb-10 md:mb-16">
-          
+
           {/* Brand Column */}
           <div className="space-y-4 md:space-y-6">
             <Link href="/" className="flex items-center gap-2 text-white group justify-start">
@@ -147,8 +147,8 @@ const Footer = () => {
             <ul className="space-y-3.5 md:space-y-4">
               {topCategories.map((link) => (
                 <li key={link}>
-                  <Link 
-                    href={`/search?category=${encodeURIComponent(link)}`} 
+                  <Link
+                    href={`/search?category=${encodeURIComponent(link)}`}
                     className="text-sm hover:text-[#FF6A00] transition-colors flex items-center gap-2 group"
                   >
                     <ArrowRight size={14} className="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all text-[#FF6A00]" />
@@ -190,7 +190,7 @@ const Footer = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Payment Methods */}
             <div className="flex gap-3 justify-start">
               <div className="px-3 py-1 bg-gray-800 rounded border border-gray-700 text-[10px] font-bold text-gray-400">VISA</div>

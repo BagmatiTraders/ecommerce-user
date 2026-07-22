@@ -17,12 +17,16 @@ interface Product {
   soldCount: number;
   brand?: string;
 }
+interface TopRankingSectionProps {
+  initialProducts?: any[];
+}
 
-export default function TopRankingSection() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function TopRankingSection({ initialProducts = [] }: TopRankingSectionProps) {
+  const [products, setProducts] = useState<any[]>(initialProducts);
+  const [loading, setLoading] = useState(initialProducts.length === 0);
 
   useEffect(() => {
+    if (initialProducts.length > 0) return;
     const fetchTopSellingProducts = async () => {
       try {
         // 1. Fetch order items to calculate dynamic quantities sold

@@ -155,13 +155,20 @@ export default async function ProductDetailPage({ params }: Props) {
   // Determine current price for JSON-LD Offers
   const currentPrice = product.special_price || product.regular_price;
 
+  // Ensure valid absolute HTTPS image URLs for Googlebot & Merchant Center
+  const rawImages: string[] = Array.isArray(product.images) ? product.images : [];
+  const sanitizedImages = rawImages
+    .filter((img) => typeof img === 'string' && img.trim() !== '')
+    .map((img) => (img.startsWith('http') ? img : `https://www.bagmati.shop${img.startsWith('/') ? '' : '/'}${img}`));
+  const productImages = sanitizedImages.length > 0 ? sanitizedImages : ['https://www.bagmati.shop/logo.png'];
+
   // JSON-LD Structured Product Data Schema
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     'name': product.display_name,
-    'image': product.images || [],
-    'description': product.description || `Buy ${product.display_name} online at best price in Nepal at Bagmati Shop. Fast delivery with cash on delivery available.`,
+    'image': productImages,
+    'description': product.description?.replace(/<[^>]+>/g, '').trim() || `Buy ${product.display_name} online at best price in Nepal at Bagmati Shop. Fast delivery with cash on delivery available.`,
     'sku': product.id,
     'mpn': product.inventory_id || product.id,
     'brand': {
@@ -176,6 +183,41 @@ export default async function ProductDetailPage({ params }: Props) {
       'priceValidUntil': '2035-01-01',
       'itemCondition': 'https://schema.org/NewCondition',
       'availability': product.stock_quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      'shippingDetails': {
+        '@type': 'OfferShippingDetails',
+        'shippingRate': {
+          '@type': 'MonetaryAmount',
+          'value': '100',
+          'currency': 'NPR',
+        },
+        'shippingDestination': {
+          '@type': 'DefinedRegion',
+          'addressCountry': 'NP',
+        },
+        'deliveryTime': {
+          '@type': 'ShippingDeliveryTime',
+          'handlingTime': {
+            '@type': 'QuantitativeValue',
+            'minValue': 1,
+            'maxValue': 2,
+            'unitCode': 'DAY',
+          },
+          'transitTime': {
+            '@type': 'QuantitativeValue',
+            'minValue': 2,
+            'maxValue': 5,
+            'unitCode': 'DAY',
+          },
+        },
+      },
+      'hasMerchantReturnPolicy': {
+        '@type': 'MerchantReturnPolicy',
+        'applicableCountry': 'NP',
+        'returnPolicyCategory': 'https://schema.org/MerchantReturnFiniteReturnWindow',
+        'merchantReturnDays': 7,
+        'returnMethod': 'https://schema.org/ReturnByMail',
+        'returnFees': 'https://schema.org/FreeReturn',
+      },
       'seller': {
         '@type': 'Organization',
         'name': storeName,

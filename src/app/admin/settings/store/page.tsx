@@ -19,7 +19,7 @@ export default function StoreSettingsPage() {
   const [storeName, setStoreName] = useState('Bagmati Traders');
   const [currency, setCurrency] = useState('Rs');
   const [contactEmail, setContactEmail] = useState('contact@bagmatitraders.com');
-  const [contactPhone, setContactPhone] = useState('+977-98490808042');
+  const [contactPhone, setContactPhone] = useState('+977-9849080842');
   const [contactAddress, setContactAddress] = useState('Kathmandu, Balaju');
   
   const [loading, setLoading] = useState(true);
@@ -212,7 +212,7 @@ export default function StoreSettingsPage() {
                       value={contactPhone}
                       onChange={(e) => setContactPhone(e.target.value)}
                       className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                      placeholder="+977-98490808042"
+                      placeholder="+977-9849080842"
                     />
                   </div>
                 </div>

@@ -28,9 +28,13 @@ const shuffleArray = (array: any[]) => {
   return arr;
 };
 
-export default function ViewAllProductsSection() {
-  const [loading, setLoading] = useState(true);
-  const [allStoreProducts, setAllStoreProducts] = useState<Product[]>([]);
+interface ViewAllProductsSectionProps {
+  initialProducts?: any[];
+}
+
+export default function ViewAllProductsSection({ initialProducts = [] }: ViewAllProductsSectionProps) {
+  const [loading, setLoading] = useState(initialProducts.length === 0);
+  const [allStoreProducts, setAllStoreProducts] = useState<any[]>(initialProducts);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   
   // Rows state

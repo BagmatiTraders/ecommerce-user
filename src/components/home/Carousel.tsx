@@ -14,10 +14,14 @@ interface CarouselImage {
   sort_order: number;
 }
 
-export default function Carousel() {
-  const [images, setImages] = useState<CarouselImage[]>([]);
+interface CarouselProps {
+  initialImages?: any[];
+}
+
+export default function Carousel({ initialImages = [] }: CarouselProps) {
+  const [images, setImages] = useState<any[]>(initialImages);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialImages.length === 0);
   const [isMobile, setIsMobile] = useState(false);
 
   // Swipe & Drag States
@@ -37,6 +41,7 @@ export default function Carousel() {
   }, []);
 
   useEffect(() => {
+    if (initialImages.length > 0) return;
     const fetchImages = async () => {
       const { data, error } = await supabase
         .from('store_carousels')
@@ -51,7 +56,7 @@ export default function Carousel() {
     };
 
     fetchImages();
-  }, []);
+  }, [initialImages.length]);
 
   const nextSlide = useCallback(() => {
     if (images.length === 0) return;
@@ -228,6 +233,7 @@ export default function Carousel() {
             {images.map((_, index) => (
               <button
                 key={index}
+                aria-label={`Go to slide ${index + 1}`}
                 onClick={() => {
                   setCurrentIndex(index);
                   resetAutoSlide();
@@ -313,12 +319,14 @@ export default function Carousel() {
       {images.length > 1 && (
         <>
           <button 
+            aria-label="Previous Slide"
             onClick={(e) => { e.stopPropagation(); prevSlide(); }}
             className="absolute left-6 top-1/2 -translate-y-1/2 w-[42px] h-[42px] rounded-full bg-white/95 text-gray-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white hover:text-[#FF6A00] hover:scale-110 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.08)] cursor-pointer"
           >
             <ChevronLeft size={20} />
           </button>
           <button 
+            aria-label="Next Slide"
             onClick={(e) => { e.stopPropagation(); nextSlide(); }}
             className="absolute right-6 top-1/2 -translate-y-1/2 w-[42px] h-[42px] rounded-full bg-white/95 text-gray-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white hover:text-[#FF6A00] hover:scale-110 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.08)] cursor-pointer"
           >
@@ -335,6 +343,7 @@ export default function Carousel() {
           {images.map((_, index) => (
             <button
               key={index}
+              aria-label={`Go to slide ${index + 1}`}
               onClick={(e) => { e.stopPropagation(); setCurrentIndex(index); }}
               className="rounded-full transition-all duration-300 cursor-pointer"
               style={{

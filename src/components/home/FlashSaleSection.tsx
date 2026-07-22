@@ -73,14 +73,19 @@ const CountdownTimer = ({ targetTime, isUpcoming }: { targetTime: string, isUpco
   );
 };
 
-export default function FlashSaleSection() {
-  const [flashSales, setFlashSales] = useState<FlashSale[]>([]);
-  const [loading, setLoading] = useState(true);
+interface FlashSaleSectionProps {
+  initialFlashSales?: any[];
+}
+
+export default function FlashSaleSection({ initialFlashSales = [] }: FlashSaleSectionProps) {
+  const [flashSales, setFlashSales] = useState<any[]>(initialFlashSales);
+  const [loading, setLoading] = useState(initialFlashSales.length === 0);
   
   const { addItem } = useCart();
   const router = useRouter();
 
   useEffect(() => {
+    if (initialFlashSales.length > 0) return;
     const fetchFlashSales = async () => {
       const nowMs = Date.now();
       const twoHoursLater = new Date(nowMs + 2 * 60 * 60 * 1000).toISOString();
@@ -105,7 +110,7 @@ export default function FlashSaleSection() {
     };
 
     fetchFlashSales();
-  }, []);
+  }, [initialFlashSales.length]);
 
   const handleBuyNow = (sale: FlashSale) => {
     const p = sale.product;

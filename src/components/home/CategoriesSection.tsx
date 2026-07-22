@@ -12,11 +12,16 @@ interface Category {
   image_url: string;
 }
 
-export default function CategoriesSection() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+interface CategoriesSectionProps {
+  initialCategories?: any[];
+}
+
+export default function CategoriesSection({ initialCategories = [] }: CategoriesSectionProps) {
+  const [categories, setCategories] = useState<any[]>(initialCategories);
+  const [loading, setLoading] = useState(initialCategories.length === 0);
 
   useEffect(() => {
+    if (initialCategories.length > 0) return;
     const fetchCategories = async () => {
       const { data, error } = await supabase
         .from('ecommerce_categories')
@@ -30,7 +35,7 @@ export default function CategoriesSection() {
     };
 
     fetchCategories();
-  }, []);
+  }, [initialCategories.length]);
 
   if (loading) {
     return (
